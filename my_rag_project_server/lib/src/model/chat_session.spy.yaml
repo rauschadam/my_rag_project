@@ -1,0 +1,10 @@
+class: ChatSession
+table: chat_session
+fields:
+  userId: int?
+  keyToken: String
+  createdAt: DateTime
+indexes:
+  chat_session_key_token_idx:
+    fields: keyToken
+    unique: true
