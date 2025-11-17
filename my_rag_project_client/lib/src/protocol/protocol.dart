@@ -16,6 +16,7 @@ import 'model/chat_message_type.dart' as _i4;
 import 'model/chat_session.dart' as _i5;
 import 'model/rag_document.dart' as _i6;
 import 'model/rag_document_type.dart' as _i7;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i8;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
@@ -73,6 +74,9 @@ class Protocol extends _i1.SerializationManager {
     if (t == _i1.getType<_i7.RAGDocumentType?>()) {
       return (data != null ? _i7.RAGDocumentType.fromJson(data) : null) as T;
     }
+    try {
+      return _i8.Protocol().deserialize<T>(data, t);
+    } on _i1.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
 
@@ -97,6 +101,10 @@ class Protocol extends _i1.SerializationManager {
     }
     if (data is _i7.RAGDocumentType) {
       return 'RAGDocumentType';
+    }
+    className = _i8.Protocol().getClassNameForObject(data);
+    if (className != null) {
+      return 'serverpod_auth.$className';
     }
     return null;
   }
@@ -124,6 +132,10 @@ class Protocol extends _i1.SerializationManager {
     }
     if (dataClassName == 'RAGDocumentType') {
       return deserialize<_i7.RAGDocumentType>(data['data']);
+    }
+    if (dataClassName.startsWith('serverpod_auth.')) {
+      data['className'] = dataClassName.substring(15);
+      return _i8.Protocol().deserializeByClassName(data);
     }
     return super.deserializeByClassName(data);
   }

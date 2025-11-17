@@ -12,7 +12,49 @@
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
 import 'dart:async' as _i2;
 import 'package:my_rag_project_client/src/protocol/greeting.dart' as _i3;
-import 'protocol.dart' as _i4;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i4;
+import 'protocol.dart' as _i5;
+
+/// {@category Endpoint}
+class EndpointKnowledge extends _i1.EndpointRef {
+  EndpointKnowledge(_i1.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'knowledge';
+
+  /// Adds a new article / text to the knowledge base.
+  /// This can be called from the Flutter app.
+  _i2.Future<void> addArticle(
+    String title,
+    String content,
+  ) =>
+      caller.callServerEndpoint<void>(
+        'knowledge',
+        'addArticle',
+        {
+          'title': title,
+          'content': content,
+        },
+      );
+}
+
+/// {@category Endpoint}
+class EndpointRag extends _i1.EndpointRef {
+  EndpointRag(_i1.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'rag';
+
+  /// Ezt hívja a kliens, hogy kérdezzen.
+  /// Stream-et ad vissza, így a válasz "szavanként" érkezik meg (mint a ChatGPT-nél).
+  _i2.Stream<String> ask(String question) =>
+      caller.callStreamingServerEndpoint<_i2.Stream<String>, String>(
+        'rag',
+        'ask',
+        {'question': question},
+        {},
+      );
+}
 
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
@@ -32,6 +74,14 @@ class EndpointGreeting extends _i1.EndpointRef {
       );
 }
 
+class Modules {
+  Modules(Client client) {
+    auth = _i4.Caller(client);
+  }
+
+  late final _i4.Caller auth;
+}
+
 class Client extends _i1.ServerpodClientShared {
   Client(
     String host, {
@@ -48,7 +98,7 @@ class Client extends _i1.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
           host,
-          _i4.Protocol(),
+          _i5.Protocol(),
           securityContext: securityContext,
           authenticationKeyManager: authenticationKeyManager,
           streamingConnectionTimeout: streamingConnectionTimeout,
@@ -58,14 +108,28 @@ class Client extends _i1.ServerpodClientShared {
           disconnectStreamsOnLostInternetConnection:
               disconnectStreamsOnLostInternetConnection,
         ) {
+    knowledge = EndpointKnowledge(this);
+    rag = EndpointRag(this);
     greeting = EndpointGreeting(this);
+    modules = Modules(this);
   }
+
+  late final EndpointKnowledge knowledge;
+
+  late final EndpointRag rag;
 
   late final EndpointGreeting greeting;
 
-  @override
-  Map<String, _i1.EndpointRef> get endpointRefLookup => {'greeting': greeting};
+  late final Modules modules;
 
   @override
-  Map<String, _i1.ModuleEndpointCaller> get moduleLookup => {};
+  Map<String, _i1.EndpointRef> get endpointRefLookup => {
+        'knowledge': knowledge,
+        'rag': rag,
+        'greeting': greeting,
+      };
+
+  @override
+  Map<String, _i1.ModuleEndpointCaller> get moduleLookup =>
+      {'auth': modules.auth};
 }

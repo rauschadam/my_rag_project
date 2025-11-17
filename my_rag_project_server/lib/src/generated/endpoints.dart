@@ -10,19 +10,91 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _i1;
-import '../greeting_endpoint.dart' as _i2;
+import '../endpoints/knowledge_endpoint.dart' as _i2;
+import '../endpoints/rag_endpoint.dart' as _i3;
+import '../greeting_endpoint.dart' as _i4;
+import 'package:serverpod_auth_server/serverpod_auth_server.dart' as _i5;
 
 class Endpoints extends _i1.EndpointDispatch {
   @override
   void initializeEndpoints(_i1.Server server) {
     var endpoints = <String, _i1.Endpoint>{
-      'greeting': _i2.GreetingEndpoint()
+      'knowledge': _i2.KnowledgeEndpoint()
+        ..initialize(
+          server,
+          'knowledge',
+          null,
+        ),
+      'rag': _i3.RagEndpoint()
+        ..initialize(
+          server,
+          'rag',
+          null,
+        ),
+      'greeting': _i4.GreetingEndpoint()
         ..initialize(
           server,
           'greeting',
           null,
-        )
+        ),
     };
+    connectors['knowledge'] = _i1.EndpointConnector(
+      name: 'knowledge',
+      endpoint: endpoints['knowledge']!,
+      methodConnectors: {
+        'addArticle': _i1.MethodConnector(
+          name: 'addArticle',
+          params: {
+            'title': _i1.ParameterDescription(
+              name: 'title',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+            'content': _i1.ParameterDescription(
+              name: 'content',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call: (
+            _i1.Session session,
+            Map<String, dynamic> params,
+          ) async =>
+              (endpoints['knowledge'] as _i2.KnowledgeEndpoint).addArticle(
+            session,
+            params['title'],
+            params['content'],
+          ),
+        )
+      },
+    );
+    connectors['rag'] = _i1.EndpointConnector(
+      name: 'rag',
+      endpoint: endpoints['rag']!,
+      methodConnectors: {
+        'ask': _i1.MethodStreamConnector(
+          name: 'ask',
+          params: {
+            'question': _i1.ParameterDescription(
+              name: 'question',
+              type: _i1.getType<String>(),
+              nullable: false,
+            )
+          },
+          streamParams: {},
+          returnType: _i1.MethodStreamReturnType.streamType,
+          call: (
+            _i1.Session session,
+            Map<String, dynamic> params,
+            Map<String, Stream> streamParams,
+          ) =>
+              (endpoints['rag'] as _i3.RagEndpoint).ask(
+            session,
+            params['question'],
+          ),
+        )
+      },
+    );
     connectors['greeting'] = _i1.EndpointConnector(
       name: 'greeting',
       endpoint: endpoints['greeting']!,
@@ -40,12 +112,13 @@ class Endpoints extends _i1.EndpointDispatch {
             _i1.Session session,
             Map<String, dynamic> params,
           ) async =>
-              (endpoints['greeting'] as _i2.GreetingEndpoint).hello(
+              (endpoints['greeting'] as _i4.GreetingEndpoint).hello(
             session,
             params['name'],
           ),
         )
       },
     );
+    modules['serverpod_auth'] = _i5.Endpoints()..initializeEndpoints(server);
   }
 }

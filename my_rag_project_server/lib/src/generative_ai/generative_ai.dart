@@ -3,7 +3,7 @@ import 'package:serverpod/serverpod.dart';
 import 'package:my_rag_project_server/src/generated/protocol.dart';
 
 /// The Gemini model name used for text generation.
-const String _geminiModelName = 'gemini-1.5-flash';
+const String _geminiModelName = 'gemini-2.0-flash';
 
 /// The Gemini model name used for generating embeddings.
 const String _geminiEmbeddingModelName = 'text-embedding-004';
@@ -61,7 +61,7 @@ class GenerativeAi {
     try {
       final embedding = await agent.createEmbedding(
         document,
-        dimensions: 1536,
+        dimensions: 768,
       );
       return Vector(embedding.toList());
     } catch (e) {

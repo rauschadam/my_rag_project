@@ -1,2 +1,6 @@
+knowledge:
+  - addArticle:
+rag:
+  - ask:
 greeting:
   - hello:

@@ -11,12 +11,13 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _i1;
 import 'package:serverpod/protocol.dart' as _i2;
-import 'greeting.dart' as _i3;
-import 'model/chat_message.dart' as _i4;
-import 'model/chat_message_type.dart' as _i5;
-import 'model/chat_session.dart' as _i6;
-import 'model/rag_document.dart' as _i7;
-import 'model/rag_document_type.dart' as _i8;
+import 'package:serverpod_auth_server/serverpod_auth_server.dart' as _i3;
+import 'greeting.dart' as _i4;
+import 'model/chat_message.dart' as _i5;
+import 'model/chat_message_type.dart' as _i6;
+import 'model/chat_session.dart' as _i7;
+import 'model/rag_document.dart' as _i8;
+import 'model/rag_document_type.dart' as _i9;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
@@ -192,8 +193,8 @@ class Protocol extends _i1.SerializationManagerServer {
           name: 'embedding',
           columnType: _i2.ColumnType.vector,
           isNullable: false,
-          dartType: 'Vector(1536)',
-          vectorDimension: 1536,
+          dartType: 'Vector(768)',
+          vectorDimension: 768,
         ),
         _i2.ColumnDefinition(
           name: 'fetchTime',
@@ -297,6 +298,7 @@ class Protocol extends _i1.SerializationManagerServer {
       ],
       managed: true,
     ),
+    ..._i3.Protocol.targetTableDefinitions,
     ..._i2.Protocol.targetTableDefinitions,
   ];
 
@@ -306,42 +308,45 @@ class Protocol extends _i1.SerializationManagerServer {
     Type? t,
   ]) {
     t ??= T;
-    if (t == _i3.Greeting) {
-      return _i3.Greeting.fromJson(data) as T;
+    if (t == _i4.Greeting) {
+      return _i4.Greeting.fromJson(data) as T;
     }
-    if (t == _i4.ChatMessage) {
-      return _i4.ChatMessage.fromJson(data) as T;
+    if (t == _i5.ChatMessage) {
+      return _i5.ChatMessage.fromJson(data) as T;
     }
-    if (t == _i5.ChatMessageType) {
-      return _i5.ChatMessageType.fromJson(data) as T;
+    if (t == _i6.ChatMessageType) {
+      return _i6.ChatMessageType.fromJson(data) as T;
     }
-    if (t == _i6.ChatSession) {
-      return _i6.ChatSession.fromJson(data) as T;
+    if (t == _i7.ChatSession) {
+      return _i7.ChatSession.fromJson(data) as T;
     }
-    if (t == _i7.RAGDocument) {
-      return _i7.RAGDocument.fromJson(data) as T;
+    if (t == _i8.RAGDocument) {
+      return _i8.RAGDocument.fromJson(data) as T;
     }
-    if (t == _i8.RAGDocumentType) {
-      return _i8.RAGDocumentType.fromJson(data) as T;
+    if (t == _i9.RAGDocumentType) {
+      return _i9.RAGDocumentType.fromJson(data) as T;
     }
-    if (t == _i1.getType<_i3.Greeting?>()) {
-      return (data != null ? _i3.Greeting.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i4.Greeting?>()) {
+      return (data != null ? _i4.Greeting.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i4.ChatMessage?>()) {
-      return (data != null ? _i4.ChatMessage.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i5.ChatMessage?>()) {
+      return (data != null ? _i5.ChatMessage.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i5.ChatMessageType?>()) {
-      return (data != null ? _i5.ChatMessageType.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i6.ChatMessageType?>()) {
+      return (data != null ? _i6.ChatMessageType.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i6.ChatSession?>()) {
-      return (data != null ? _i6.ChatSession.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i7.ChatSession?>()) {
+      return (data != null ? _i7.ChatSession.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i7.RAGDocument?>()) {
-      return (data != null ? _i7.RAGDocument.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i8.RAGDocument?>()) {
+      return (data != null ? _i8.RAGDocument.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i8.RAGDocumentType?>()) {
-      return (data != null ? _i8.RAGDocumentType.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i9.RAGDocumentType?>()) {
+      return (data != null ? _i9.RAGDocumentType.fromJson(data) : null) as T;
     }
+    try {
+      return _i3.Protocol().deserialize<T>(data, t);
+    } on _i1.DeserializationTypeNotFoundException catch (_) {}
     try {
       return _i2.Protocol().deserialize<T>(data, t);
     } on _i1.DeserializationTypeNotFoundException catch (_) {}
@@ -352,27 +357,31 @@ class Protocol extends _i1.SerializationManagerServer {
   String? getClassNameForObject(Object? data) {
     String? className = super.getClassNameForObject(data);
     if (className != null) return className;
-    if (data is _i3.Greeting) {
+    if (data is _i4.Greeting) {
       return 'Greeting';
     }
-    if (data is _i4.ChatMessage) {
+    if (data is _i5.ChatMessage) {
       return 'ChatMessage';
     }
-    if (data is _i5.ChatMessageType) {
+    if (data is _i6.ChatMessageType) {
       return 'ChatMessageType';
     }
-    if (data is _i6.ChatSession) {
+    if (data is _i7.ChatSession) {
       return 'ChatSession';
     }
-    if (data is _i7.RAGDocument) {
+    if (data is _i8.RAGDocument) {
       return 'RAGDocument';
     }
-    if (data is _i8.RAGDocumentType) {
+    if (data is _i9.RAGDocumentType) {
       return 'RAGDocumentType';
     }
     className = _i2.Protocol().getClassNameForObject(data);
     if (className != null) {
       return 'serverpod.$className';
+    }
+    className = _i3.Protocol().getClassNameForObject(data);
+    if (className != null) {
+      return 'serverpod_auth.$className';
     }
     return null;
   }
@@ -384,26 +393,30 @@ class Protocol extends _i1.SerializationManagerServer {
       return super.deserializeByClassName(data);
     }
     if (dataClassName == 'Greeting') {
-      return deserialize<_i3.Greeting>(data['data']);
+      return deserialize<_i4.Greeting>(data['data']);
     }
     if (dataClassName == 'ChatMessage') {
-      return deserialize<_i4.ChatMessage>(data['data']);
+      return deserialize<_i5.ChatMessage>(data['data']);
     }
     if (dataClassName == 'ChatMessageType') {
-      return deserialize<_i5.ChatMessageType>(data['data']);
+      return deserialize<_i6.ChatMessageType>(data['data']);
     }
     if (dataClassName == 'ChatSession') {
-      return deserialize<_i6.ChatSession>(data['data']);
+      return deserialize<_i7.ChatSession>(data['data']);
     }
     if (dataClassName == 'RAGDocument') {
-      return deserialize<_i7.RAGDocument>(data['data']);
+      return deserialize<_i8.RAGDocument>(data['data']);
     }
     if (dataClassName == 'RAGDocumentType') {
-      return deserialize<_i8.RAGDocumentType>(data['data']);
+      return deserialize<_i9.RAGDocumentType>(data['data']);
     }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
       return _i2.Protocol().deserializeByClassName(data);
+    }
+    if (dataClassName.startsWith('serverpod_auth.')) {
+      data['className'] = dataClassName.substring(15);
+      return _i3.Protocol().deserializeByClassName(data);
     }
     return super.deserializeByClassName(data);
   }
@@ -411,18 +424,24 @@ class Protocol extends _i1.SerializationManagerServer {
   @override
   _i1.Table? getTableForType(Type t) {
     {
+      var table = _i3.Protocol().getTableForType(t);
+      if (table != null) {
+        return table;
+      }
+    }
+    {
       var table = _i2.Protocol().getTableForType(t);
       if (table != null) {
         return table;
       }
     }
     switch (t) {
-      case _i4.ChatMessage:
-        return _i4.ChatMessage.t;
-      case _i6.ChatSession:
-        return _i6.ChatSession.t;
-      case _i7.RAGDocument:
-        return _i7.RAGDocument.t;
+      case _i5.ChatMessage:
+        return _i5.ChatMessage.t;
+      case _i7.ChatSession:
+        return _i7.ChatSession.t;
+      case _i8.RAGDocument:
+        return _i8.RAGDocument.t;
     }
     return null;
   }
