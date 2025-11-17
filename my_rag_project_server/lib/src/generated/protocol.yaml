@@ -1,6 +1,7 @@
 knowledge:
   - addArticle:
 rag:
+  - createSession:
   - ask:
 greeting:
   - hello:

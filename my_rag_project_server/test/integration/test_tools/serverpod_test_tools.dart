@@ -14,7 +14,9 @@
 import 'package:serverpod_test/serverpod_test.dart' as _i1;
 import 'package:serverpod/serverpod.dart' as _i2;
 import 'dart:async' as _i3;
-import 'package:my_rag_project_server/src/generated/greeting.dart' as _i4;
+import 'package:my_rag_project_server/src/generated/model/chat_session.dart'
+    as _i4;
+import 'package:my_rag_project_server/src/generated/greeting.dart' as _i5;
 import 'package:my_rag_project_server/src/generated/protocol.dart';
 import 'package:my_rag_project_server/src/generated/endpoints.dart';
 export 'package:serverpod_test/serverpod_test_public_exports.dart';
@@ -184,8 +186,36 @@ class _RagEndpoint {
 
   final _i2.SerializationManager _serializationManager;
 
+  _i3.Future<_i4.ChatSession> createSession(
+      _i1.TestSessionBuilder sessionBuilder) async {
+    return _i1.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _i1.InternalTestSessionBuilder).internalBuild(
+        endpoint: 'rag',
+        method: 'createSession',
+      );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'rag',
+          methodName: 'createSession',
+          parameters: _i1.testObjectToJson({}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue = await (_localCallContext.method.call(
+          _localUniqueSession,
+          _localCallContext.arguments,
+        ) as _i3.Future<_i4.ChatSession>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
   _i3.Stream<String> ask(
     _i1.TestSessionBuilder sessionBuilder,
+    int chatSessionId,
     String question,
   ) {
     var _localTestStreamManager = _i1.TestStreamManager<String>();
@@ -201,7 +231,10 @@ class _RagEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'rag',
           methodName: 'ask',
-          arguments: {'question': question},
+          arguments: {
+            'chatSessionId': chatSessionId,
+            'question': question,
+          },
           requestedInputStreams: [],
           serializationManager: _serializationManager,
         );
@@ -227,7 +260,7 @@ class _GreetingEndpoint {
 
   final _i2.SerializationManager _serializationManager;
 
-  _i3.Future<_i4.Greeting> hello(
+  _i3.Future<_i5.Greeting> hello(
     _i1.TestSessionBuilder sessionBuilder,
     String name,
   ) async {
@@ -248,7 +281,7 @@ class _GreetingEndpoint {
         var _localReturnValue = await (_localCallContext.method.call(
           _localUniqueSession,
           _localCallContext.arguments,
-        ) as _i3.Future<_i4.Greeting>);
+        ) as _i3.Future<_i5.Greeting>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

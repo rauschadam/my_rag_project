@@ -1,7 +1,8 @@
 import 'package:my_rag_project_client/my_rag_project_client.dart';
 import 'package:flutter/material.dart';
-import 'package:serverpod_auth_shared_flutter/serverpod_auth_shared_flutter.dart';
 import 'package:serverpod_flutter/serverpod_flutter.dart';
+import 'package:serverpod_auth_shared_flutter/serverpod_auth_shared_flutter.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 late SessionManager sessionManager;
 late Client client;
@@ -9,15 +10,16 @@ late Client client;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Kliens beállítása
+  // Initialize the Client with the server URL and authentication key manager
   client = Client(
     'http://$localhost:8080/',
     authenticationKeyManager: FlutterAuthenticationKeyManager(),
-  )..connectivityMonitor = FlutterConnectivityMonitor();
+  )
+    // Checks the internet connection at all times
+    ..connectivityMonitor = FlutterConnectivityMonitor();
 
-  sessionManager = SessionManager(
-    caller: client.modules.auth,
-  );
+  // Initialize SessionManager to handle user sessions and authentication state
+  sessionManager = SessionManager(caller: client.modules.auth);
   await sessionManager.initialize();
 
   runApp(const MyApp());
@@ -29,58 +31,94 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'RAG Tanító',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
-      home: const KnowledgeInputPage(),
+      title: 'RAG AI Chat',
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+      home: const ChatPage(),
     );
   }
 }
 
-class KnowledgeInputPage extends StatefulWidget {
-  const KnowledgeInputPage({super.key});
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
 
   @override
-  State<KnowledgeInputPage> createState() => _KnowledgeInputPageState();
+  State<ChatPage> createState() => _ChatPageState();
 }
 
-class _KnowledgeInputPageState extends State<KnowledgeInputPage> {
-  final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
-  bool _isLoading = false;
-  String? _statusMessage;
+class _ChatPageState extends State<ChatPage> {
+  // List to store chat messages for display
+  final List<ChatMessageDisplay> _messages = [];
 
-  // Ez a függvény küldi el az adatot a szervernek
-  Future<void> _uploadKnowledge() async {
-    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
+  // Controller for the input field
+  final TextEditingController _controller = TextEditingController();
+
+  // Controller for scrolling the chat view
+  final ScrollController _scrollController = ScrollController();
+
+  bool _isLoading = false;
+  int? _currentSessionId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start a new chat session when the page loads
+    _startNewSession();
+  }
+
+  /// Request a new session ID from the server
+  Future<void> _startNewSession() async {
+    try {
+      final session = await client.rag.createSession();
       setState(() {
-        _statusMessage = 'Kérlek tölts ki minden mezőt!';
+        _currentSessionId = session.id;
       });
-      return;
     }
+    // error..
+    catch (e) {
+      print("Error starting session: $e");
+    }
+  }
+
+  /// Send the user's message to the server and handle the streaming response
+  Future<void> _sendMessage() async {
+    final text = _controller.text.trim();
+    // Do nothing if text is empty or session isn't ready
+    if (text.isEmpty || _currentSessionId == null) return;
 
     setState(() {
+      // Add user message to the list
+      _messages.add(ChatMessageDisplay(text: text, isUser: true));
       _isLoading = true;
-      _statusMessage = 'Feldolgozás és tanulás folyamatban...';
+      _controller.clear();
+
+      // Add a placeholder message for the AI response
+      _messages.add(ChatMessageDisplay(text: "", isUser: false));
     });
 
-    try {
-      // HÍVJUK A VÉGPONTOT
-      // Ez a függvény a szerveren fut le:
-      // 1. Összefoglal, 2. Vektort generál, 3. Ment az adatbázisba.
-      await client.knowledge
-          .addArticle(_titleController.text, _contentController.text);
+    // Scroll to the bottom to show the new message
+    _scrollToBottom();
 
-      setState(() {
-        _statusMessage = 'Siker! Az AI megtanulta az anyagot.';
-        _titleController.clear();
-        _contentController.clear();
-      });
+    try {
+      // Call the RAG endpoint on the server (returns a Stream)
+      final stream = client.rag.ask(_currentSessionId!, text);
+
+      // Process the stream chunks as they arrive
+      await for (final chunk in stream) {
+        setState(() {
+          final lastMsg = _messages.last;
+          // Append the new chunk to the last message (the AI's message)
+          _messages.last = ChatMessageDisplay(
+            text: lastMsg.text + chunk,
+            isUser: false,
+          );
+        });
+        // Scroll to bottom on every new chunk to follow the text generation
+        _scrollToBottom();
+      }
     } catch (e) {
       setState(() {
-        _statusMessage = 'Hiba történt: $e';
+        _messages.last =
+            ChatMessageDisplay(text: "Error: $e", isUser: false, isError: true);
       });
     } finally {
       setState(() {
@@ -89,60 +127,120 @@ class _KnowledgeInputPageState extends State<KnowledgeInputPage> {
     }
   }
 
+  /// Helper to scroll the list view to the very bottom
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tudásbázis Feltöltés')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Cím (pl. Serverpod Dokumentáció)',
-                border: OutlineInputBorder(),
-              ),
+      appBar: AppBar(
+        title: const Text('Smart RAG Chat 🧠'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              // Clear history and start a new session
+              _messages.clear();
+              _startNewSession();
+            },
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          // Chat history area
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController, // Attach the scroll controller
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                return Align(
+                  alignment:
+                      msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: msg.isError
+                          ? Colors.red[100]
+                          : (msg.isUser ? Colors.blue[100] : Colors.grey[200]),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    // Limit width for better UI appearance
+                    constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.8),
+
+                    // HERE IS THE MAGIC: Using MarkdownBody instead of Text!
+                    // This renders bold text, code blocks, lists, etc.
+                    child: MarkdownBody(
+                      data: msg.text,
+                      selectable: true, // Text is selectable
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          fontSize: 16,
+                          color: msg.isError ? Colors.red : Colors.black87,
+                        ),
+                        code: const TextStyle(
+                          backgroundColor: Colors.black12,
+                          fontFamily: 'monospace',
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: Colors.black12,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _contentController,
-              decoration: const InputDecoration(
-                labelText: 'Tartalom (Ide másold a szöveget)',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 10, // Nagyobb hely a szövegnek
+          ),
+
+          // Loading indicator
+          if (_isLoading) const LinearProgressIndicator(),
+
+          // Input area
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: 'Type something...',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: (_isLoading || _currentSessionId == null)
+                      ? null
+                      : _sendMessage,
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              ElevatedButton.icon(
-                onPressed: _uploadKnowledge,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Tanítsd meg az AI-nak!'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                ),
-              ),
-            const SizedBox(height: 16),
-            if (_statusMessage != null)
-              Text(
-                _statusMessage!,
-                style: TextStyle(
-                  color: _statusMessage!.startsWith('Hiba') ||
-                          _statusMessage!.startsWith('Kérlek')
-                      ? Colors.red
-                      : Colors.green,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// Helper class to store message data for the UI
+class ChatMessageDisplay {
+  final String text;
+  final bool isUser;
+  final bool isError;
+
+  ChatMessageDisplay(
+      {required this.text, required this.isUser, this.isError = false});
 }

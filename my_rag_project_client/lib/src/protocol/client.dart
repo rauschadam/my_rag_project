@@ -11,9 +11,11 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
 import 'dart:async' as _i2;
-import 'package:my_rag_project_client/src/protocol/greeting.dart' as _i3;
-import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i4;
-import 'protocol.dart' as _i5;
+import 'package:my_rag_project_client/src/protocol/model/chat_session.dart'
+    as _i3;
+import 'package:my_rag_project_client/src/protocol/greeting.dart' as _i4;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i5;
+import 'protocol.dart' as _i6;
 
 /// {@category Endpoint}
 class EndpointKnowledge extends _i1.EndpointRef {
@@ -45,13 +47,30 @@ class EndpointRag extends _i1.EndpointRef {
   @override
   String get name => 'rag';
 
-  /// Ezt hívja a kliens, hogy kérdezzen.
-  /// Stream-et ad vissza, így a válasz "szavanként" érkezik meg (mint a ChatGPT-nél).
-  _i2.Stream<String> ask(String question) =>
+  /// Létrehoz egy új beszélgetést (ChatSession) az adatbázisban.
+  /// Ezt hívja meg a mobilapp indításkor.
+  _i2.Future<_i3.ChatSession> createSession() =>
+      caller.callServerEndpoint<_i3.ChatSession>(
+        'rag',
+        'createSession',
+        {},
+      );
+
+  /// A kérdező metódus, ami most már:
+  /// 1. Betölti a múltat.
+  /// 2. Ment az adatbázisba.
+  /// 3. Válaszol kontextussal.
+  _i2.Stream<String> ask(
+    int chatSessionId,
+    String question,
+  ) =>
       caller.callStreamingServerEndpoint<_i2.Stream<String>, String>(
         'rag',
         'ask',
-        {'question': question},
+        {
+          'chatSessionId': chatSessionId,
+          'question': question,
+        },
         {},
       );
 }
@@ -66,8 +85,8 @@ class EndpointGreeting extends _i1.EndpointRef {
   String get name => 'greeting';
 
   /// Returns a personalized greeting message: "Hello {name}".
-  _i2.Future<_i3.Greeting> hello(String name) =>
-      caller.callServerEndpoint<_i3.Greeting>(
+  _i2.Future<_i4.Greeting> hello(String name) =>
+      caller.callServerEndpoint<_i4.Greeting>(
         'greeting',
         'hello',
         {'name': name},
@@ -76,10 +95,10 @@ class EndpointGreeting extends _i1.EndpointRef {
 
 class Modules {
   Modules(Client client) {
-    auth = _i4.Caller(client);
+    auth = _i5.Caller(client);
   }
 
-  late final _i4.Caller auth;
+  late final _i5.Caller auth;
 }
 
 class Client extends _i1.ServerpodClientShared {
@@ -98,7 +117,7 @@ class Client extends _i1.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
           host,
-          _i5.Protocol(),
+          _i6.Protocol(),
           securityContext: securityContext,
           authenticationKeyManager: authenticationKeyManager,
           streamingConnectionTimeout: streamingConnectionTimeout,

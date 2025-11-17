@@ -72,14 +72,28 @@ class Endpoints extends _i1.EndpointDispatch {
       name: 'rag',
       endpoint: endpoints['rag']!,
       methodConnectors: {
+        'createSession': _i1.MethodConnector(
+          name: 'createSession',
+          params: {},
+          call: (
+            _i1.Session session,
+            Map<String, dynamic> params,
+          ) async =>
+              (endpoints['rag'] as _i3.RagEndpoint).createSession(session),
+        ),
         'ask': _i1.MethodStreamConnector(
           name: 'ask',
           params: {
+            'chatSessionId': _i1.ParameterDescription(
+              name: 'chatSessionId',
+              type: _i1.getType<int>(),
+              nullable: false,
+            ),
             'question': _i1.ParameterDescription(
               name: 'question',
               type: _i1.getType<String>(),
               nullable: false,
-            )
+            ),
           },
           streamParams: {},
           returnType: _i1.MethodStreamReturnType.streamType,
@@ -90,9 +104,10 @@ class Endpoints extends _i1.EndpointDispatch {
           ) =>
               (endpoints['rag'] as _i3.RagEndpoint).ask(
             session,
+            params['chatSessionId'],
             params['question'],
           ),
-        )
+        ),
       },
     );
     connectors['greeting'] = _i1.EndpointConnector(
