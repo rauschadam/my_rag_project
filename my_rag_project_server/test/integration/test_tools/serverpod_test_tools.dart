@@ -217,6 +217,7 @@ class _RagEndpoint {
     _i1.TestSessionBuilder sessionBuilder,
     int chatSessionId,
     String question,
+    bool searchListPanels,
   ) {
     var _localTestStreamManager = _i1.TestStreamManager<String>();
     _i1.callStreamFunctionAndHandleExceptions(
@@ -234,6 +235,7 @@ class _RagEndpoint {
           arguments: {
             'chatSessionId': chatSessionId,
             'question': question,
+            'searchListPanels': searchListPanels,
           },
           requestedInputStreams: [],
           serializationManager: _serializationManager,

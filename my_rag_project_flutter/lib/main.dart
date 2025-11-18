@@ -31,6 +31,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'RAG AI Chat',
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const ChatPage(),
@@ -54,6 +55,9 @@ class _ChatPageState extends State<ChatPage> {
 
   // Controller for scrolling the chat view
   final ScrollController _scrollController = ScrollController();
+
+  // Decides between Document and ListPanel search
+  bool _searchDataBase = false;
 
   bool _isLoading = false;
   int? _currentSessionId;
@@ -100,7 +104,7 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       // Call the RAG endpoint on the server (returns a Stream)
-      final stream = client.rag.ask(_currentSessionId!, text);
+      final stream = client.rag.ask(_currentSessionId!, text, _searchDataBase);
 
       // Process the stream chunks as they arrive
       await for (final chunk in stream) {
@@ -138,8 +142,29 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart RAG Chat 🧠'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('RAG Chat', style: TextStyle(fontSize: 16)),
+            // Kiírjuk, épp melyik módban vagyunk
+            Text(
+              _searchDataBase ? 'Mód: Adatbázis (SQL)' : 'Mód: Dokumentumok',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ],
+        ),
         actions: [
+          Switch(
+            value: _searchDataBase,
+            onChanged: (value) {
+              setState(() {
+                _searchDataBase = value;
+              });
+              // Opcionális: új sessiont indíthatunk váltáskor,
+              // hogy ne keveredjen a kontextus, de nem kötelező.
+            },
+            activeThumbColor: Colors.green,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {

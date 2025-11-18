@@ -1,0 +1,17 @@
+class: ListPanelTableDescription
+table: list_panel_table_description
+fields:
+  distributionId: int              # Az ERP-s azonosító (pl. 15, 125)
+  nameHun: String                  # Pl. "Föld országai"
+  descriptionHun: String           # Általános leírás
+  businessDescriptionHun: String   # Ügyviteli leírás
+  
+  # A vektor a kereséshez (768 dimenziós a Gemini 1.5 Flash/Text-Embedding-004 miatt)
+  embedding: Vector(768)
+
+indexes:
+  # Index a gyors vektoros kereséshez
+  list_panel_table_embedding_idx:
+    fields: embedding
+    type: hnsw
+    distanceFunction: cosine

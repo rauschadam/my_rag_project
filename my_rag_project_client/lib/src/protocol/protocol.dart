@@ -14,13 +14,17 @@ import 'greeting.dart' as _i2;
 import 'model/chat_message.dart' as _i3;
 import 'model/chat_message_type.dart' as _i4;
 import 'model/chat_session.dart' as _i5;
-import 'model/rag_document.dart' as _i6;
-import 'model/rag_document_type.dart' as _i7;
-import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i8;
+import 'model/list_panel_column_description.dart' as _i6;
+import 'model/list_panel_table_description.dart' as _i7;
+import 'model/rag_document.dart' as _i8;
+import 'model/rag_document_type.dart' as _i9;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i10;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
 export 'model/chat_session.dart';
+export 'model/list_panel_column_description.dart';
+export 'model/list_panel_table_description.dart';
 export 'model/rag_document.dart';
 export 'model/rag_document_type.dart';
 export 'client.dart';
@@ -50,11 +54,17 @@ class Protocol extends _i1.SerializationManager {
     if (t == _i5.ChatSession) {
       return _i5.ChatSession.fromJson(data) as T;
     }
-    if (t == _i6.RAGDocument) {
-      return _i6.RAGDocument.fromJson(data) as T;
+    if (t == _i6.ListPanelColumnDescription) {
+      return _i6.ListPanelColumnDescription.fromJson(data) as T;
     }
-    if (t == _i7.RAGDocumentType) {
-      return _i7.RAGDocumentType.fromJson(data) as T;
+    if (t == _i7.ListPanelTableDescription) {
+      return _i7.ListPanelTableDescription.fromJson(data) as T;
+    }
+    if (t == _i8.RAGDocument) {
+      return _i8.RAGDocument.fromJson(data) as T;
+    }
+    if (t == _i9.RAGDocumentType) {
+      return _i9.RAGDocumentType.fromJson(data) as T;
     }
     if (t == _i1.getType<_i2.Greeting?>()) {
       return (data != null ? _i2.Greeting.fromJson(data) : null) as T;
@@ -68,14 +78,24 @@ class Protocol extends _i1.SerializationManager {
     if (t == _i1.getType<_i5.ChatSession?>()) {
       return (data != null ? _i5.ChatSession.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i6.RAGDocument?>()) {
-      return (data != null ? _i6.RAGDocument.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i6.ListPanelColumnDescription?>()) {
+      return (data != null
+          ? _i6.ListPanelColumnDescription.fromJson(data)
+          : null) as T;
     }
-    if (t == _i1.getType<_i7.RAGDocumentType?>()) {
-      return (data != null ? _i7.RAGDocumentType.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i7.ListPanelTableDescription?>()) {
+      return (data != null
+          ? _i7.ListPanelTableDescription.fromJson(data)
+          : null) as T;
+    }
+    if (t == _i1.getType<_i8.RAGDocument?>()) {
+      return (data != null ? _i8.RAGDocument.fromJson(data) : null) as T;
+    }
+    if (t == _i1.getType<_i9.RAGDocumentType?>()) {
+      return (data != null ? _i9.RAGDocumentType.fromJson(data) : null) as T;
     }
     try {
-      return _i8.Protocol().deserialize<T>(data, t);
+      return _i10.Protocol().deserialize<T>(data, t);
     } on _i1.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
@@ -96,13 +116,19 @@ class Protocol extends _i1.SerializationManager {
     if (data is _i5.ChatSession) {
       return 'ChatSession';
     }
-    if (data is _i6.RAGDocument) {
+    if (data is _i6.ListPanelColumnDescription) {
+      return 'ListPanelColumnDescription';
+    }
+    if (data is _i7.ListPanelTableDescription) {
+      return 'ListPanelTableDescription';
+    }
+    if (data is _i8.RAGDocument) {
       return 'RAGDocument';
     }
-    if (data is _i7.RAGDocumentType) {
+    if (data is _i9.RAGDocumentType) {
       return 'RAGDocumentType';
     }
-    className = _i8.Protocol().getClassNameForObject(data);
+    className = _i10.Protocol().getClassNameForObject(data);
     if (className != null) {
       return 'serverpod_auth.$className';
     }
@@ -127,15 +153,21 @@ class Protocol extends _i1.SerializationManager {
     if (dataClassName == 'ChatSession') {
       return deserialize<_i5.ChatSession>(data['data']);
     }
+    if (dataClassName == 'ListPanelColumnDescription') {
+      return deserialize<_i6.ListPanelColumnDescription>(data['data']);
+    }
+    if (dataClassName == 'ListPanelTableDescription') {
+      return deserialize<_i7.ListPanelTableDescription>(data['data']);
+    }
     if (dataClassName == 'RAGDocument') {
-      return deserialize<_i6.RAGDocument>(data['data']);
+      return deserialize<_i8.RAGDocument>(data['data']);
     }
     if (dataClassName == 'RAGDocumentType') {
-      return deserialize<_i7.RAGDocumentType>(data['data']);
+      return deserialize<_i9.RAGDocumentType>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth.')) {
       data['className'] = dataClassName.substring(15);
-      return _i8.Protocol().deserializeByClassName(data);
+      return _i10.Protocol().deserializeByClassName(data);
     }
     return super.deserializeByClassName(data);
   }

@@ -15,12 +15,11 @@ class RagEndpoint extends Endpoint {
     return await ChatSession.db.insertRow(session, chatSession);
   }
 
-  /// The main chat method which now:
-  /// 1. Loads the conversation history.
-  /// 2. Saves messages to the database.
-  /// 3. Generates an answer using context.
-  Stream<String> ask(
-      Session session, int chatSessionId, String question) async* {
+  /// The main chat method.
+  /// It handles the logic for switching between Schema Search (SQL structure)
+  /// and Content Search (Documents), maintains history, and saves messages.
+  Stream<String> ask(Session session, int chatSessionId, String question,
+      bool searchListPanels) async* {
     final genAi = GenerativeAi();
 
     // 1. Verify that the session exists
@@ -30,16 +29,14 @@ class RagEndpoint extends Endpoint {
     }
 
     // 2. Load previous messages (Memory)
+    // We retrieve the conversation history to allow the AI to understand context.
     final history = await ChatMessage.db.find(
       session,
       where: (t) => t.chatSessionId.equals(chatSessionId),
       orderBy: (t) => t.createdAt,
     );
 
-    // 3. Search for relevant knowledge/documents in the vector DB
-    final documents = await searchDocuments(session, question);
-
-    // 4. Save the USER'S question to the database
+    // 3. Save the USER'S question to the database
     await ChatMessage.db.insertRow(
       session,
       ChatMessage(
@@ -50,11 +47,49 @@ class RagEndpoint extends Endpoint {
       ),
     );
 
-    // 5. Generate the answer (passing the 'history' for context!)
+    // 4. Determine Context and Prompt based on the selected mode
+    String systemPrompt;
+    List<RAGDocument> documents = [];
+
+    if (searchListPanels) {
+      // --- MODE A: SCHEMA RAG (Database Structure) ---
+      // Search for relevant List Panels (tables) instead of documents.
+      final panels = await findRelevantListPanels(session, question);
+
+      // Format the found panels into a string context for the AI
+      // (Labels here are in Hungarian so the AI understands the data structure)
+      String contextData = "Elérhető Listapanelek (Adattáblák):\n";
+      for (var p in panels) {
+        contextData +=
+            "- ID: ${p.distributionId}\n  Név: ${p.nameHun}\n  Leírás: ${p.descriptionHun}\n  Ügyvitel: ${p.businessDescriptionHun}\n\n";
+      }
+
+      // Create a specialized prompt for an ERP Expert (IN HUNGARIAN)
+      systemPrompt = '''
+Te egy intelligens ERP adatbázis szakértő vagy. A feladatod kiválasztani a megfelelő adattáblát (Listapanelt) a felhasználó kérdéséhez, és elmagyarázni, hogyan kell szűrni az adatokat.
+
+$contextData
+
+Feladat:
+1. Válaszd ki a legrelevánsabb Listapanelt az ID-ja alapján.
+2. A válaszodat így kezdd: "A [ID] számú, [Név] nevű listapanel alapján..."
+3. Ha a kérdés konkrét adatra vonatkozik (pl. "cseh szállítók"), akkor írd le, hogy milyen feltételeket keresnénk (pl. "Országkód = CZ").
+''';
+    } else {
+      // --- MODE B: CONTENT RAG (Documentation) ---
+      // Search for relevant knowledge documents.
+      documents = await searchDocuments(session, question);
+
+      // Create a general helpful assistant prompt (IN HUNGARIAN)
+      systemPrompt =
+          'Te egy segítőkész AI asszisztens vagy. Válaszolj a kérdésre KIZÁRÓLAG a megadott dokumentumok alapján. Ha a válasz nincs benne a dokumentumokban, mondd azt: "A megadott kontextus alapján nem tudok válaszolni".';
+    }
+
+    // 5. Generate the answer
+    // We pass the constructed systemPrompt and the documents list.
     final answerStream = genAi.generateConversationalAnswer(
       question: question,
-      systemPrompt:
-          'You are a helpful AI assistant. Answer based on the context and documents provided.',
+      systemPrompt: systemPrompt, // Hungarian prompt
       documents: documents,
       conversation: history,
     );

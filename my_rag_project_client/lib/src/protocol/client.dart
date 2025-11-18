@@ -47,8 +47,8 @@ class EndpointRag extends _i1.EndpointRef {
   @override
   String get name => 'rag';
 
-  /// Létrehoz egy új beszélgetést (ChatSession) az adatbázisban.
-  /// Ezt hívja meg a mobilapp indításkor.
+  /// Creates a new chat session in the database.
+  /// This is called by the mobile app on startup to initialize a conversation.
   _i2.Future<_i3.ChatSession> createSession() =>
       caller.callServerEndpoint<_i3.ChatSession>(
         'rag',
@@ -56,13 +56,13 @@ class EndpointRag extends _i1.EndpointRef {
         {},
       );
 
-  /// A kérdező metódus, ami most már:
-  /// 1. Betölti a múltat.
-  /// 2. Ment az adatbázisba.
-  /// 3. Válaszol kontextussal.
+  /// The main chat method.
+  /// It handles the logic for switching between Schema Search (SQL structure)
+  /// and Content Search (Documents), maintains history, and saves messages.
   _i2.Stream<String> ask(
     int chatSessionId,
     String question,
+    bool searchListPanels,
   ) =>
       caller.callStreamingServerEndpoint<_i2.Stream<String>, String>(
         'rag',
@@ -70,6 +70,7 @@ class EndpointRag extends _i1.EndpointRef {
         {
           'chatSessionId': chatSessionId,
           'question': question,
+          'searchListPanels': searchListPanels,
         },
         {},
       );
