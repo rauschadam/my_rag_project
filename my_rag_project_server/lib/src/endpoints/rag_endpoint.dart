@@ -1,3 +1,4 @@
+import 'package:my_rag_project_server/src/business/schema_importer.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:my_rag_project_server/src/business/search.dart';
 import 'package:my_rag_project_server/src/generative_ai/generative_ai.dart';
@@ -13,6 +14,10 @@ class RagEndpoint extends Endpoint {
       createdAt: DateTime.now(),
     );
     return await ChatSession.db.insertRow(session, chatSession);
+  }
+
+  Future<void> triggerSchemaImport(Session session) async {
+    await SchemaImporter.importSchemaData(session);
   }
 
   /// The main chat method.

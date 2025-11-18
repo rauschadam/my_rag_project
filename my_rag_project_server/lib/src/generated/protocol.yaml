@@ -2,6 +2,7 @@ knowledge:
   - addArticle:
 rag:
   - createSession:
+  - triggerSchemaImport:
   - ask:
 greeting:
   - hello:

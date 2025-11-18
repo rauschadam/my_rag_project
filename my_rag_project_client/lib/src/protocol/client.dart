@@ -56,6 +56,12 @@ class EndpointRag extends _i1.EndpointRef {
         {},
       );
 
+  _i2.Future<void> triggerSchemaImport() => caller.callServerEndpoint<void>(
+        'rag',
+        'triggerSchemaImport',
+        {},
+      );
+
   /// The main chat method.
   /// It handles the logic for switching between Schema Search (SQL structure)
   /// and Content Search (Documents), maintains history, and saves messages.

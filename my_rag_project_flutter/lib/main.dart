@@ -154,6 +154,25 @@ class _ChatPageState extends State<ChatPage> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.cloud_upload),
+            tooltip: "Adatok importálása (Egyszeri)",
+            onPressed: () async {
+              try {
+                // Ez hívja meg a szerveren a SchemaImporter-t
+                await client.rag.triggerSchemaImport();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Sikeres importálás! Mehet a kérdés.')),
+                );
+              } catch (e) {
+                print("Import hiba: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hiba: $e')),
+                );
+              }
+            },
+          ),
           Switch(
             value: _searchDataBase,
             onChanged: (value) {

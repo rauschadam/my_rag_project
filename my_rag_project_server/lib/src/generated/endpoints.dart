@@ -81,6 +81,16 @@ class Endpoints extends _i1.EndpointDispatch {
           ) async =>
               (endpoints['rag'] as _i3.RagEndpoint).createSession(session),
         ),
+        'triggerSchemaImport': _i1.MethodConnector(
+          name: 'triggerSchemaImport',
+          params: {},
+          call: (
+            _i1.Session session,
+            Map<String, dynamic> params,
+          ) async =>
+              (endpoints['rag'] as _i3.RagEndpoint)
+                  .triggerSchemaImport(session),
+        ),
         'ask': _i1.MethodStreamConnector(
           name: 'ask',
           params: {
