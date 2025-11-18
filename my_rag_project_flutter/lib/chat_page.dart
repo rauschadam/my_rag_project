@@ -30,6 +30,7 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     // Start a new chat session when the page loads
+    testDatabaseConnection();
     _startNewSession();
   }
 
@@ -44,6 +45,24 @@ class _ChatPageState extends State<ChatPage> {
     // error..
     catch (e) {
       print("Error starting session: $e");
+    }
+  }
+
+  // Flutter/Dart kliens oldalon
+  void testDatabaseConnection() async {
+    try {
+      // Hívd meg az új metódust
+      final count = await client.user.countTestRows();
+
+      if (count >= 0) {
+        print(
+            '✅ Serverpod és Supabase kapcsolat SIKERES! Talált sorok: $count');
+      } else {
+        print(
+            '❌ Hiba történt a szerver hívásakor. Ellenőrizd a Serverpod konzolját a részletekért.');
+      }
+    } catch (e) {
+      print('Hiba a Serverpod hívás során: $e');
     }
   }
 

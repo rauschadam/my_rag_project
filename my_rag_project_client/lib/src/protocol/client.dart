@@ -82,6 +82,20 @@ class EndpointRag extends _i1.EndpointRef {
       );
 }
 
+/// {@category Endpoint}
+class EndpointUser extends _i1.EndpointRef {
+  EndpointUser(_i1.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'user';
+
+  _i2.Future<int> countTestRows() => caller.callServerEndpoint<int>(
+        'user',
+        'countTestRows',
+        {},
+      );
+}
+
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
 /// {@category Endpoint}
@@ -136,6 +150,7 @@ class Client extends _i1.ServerpodClientShared {
         ) {
     knowledge = EndpointKnowledge(this);
     rag = EndpointRag(this);
+    user = EndpointUser(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -143,6 +158,8 @@ class Client extends _i1.ServerpodClientShared {
   late final EndpointKnowledge knowledge;
 
   late final EndpointRag rag;
+
+  late final EndpointUser user;
 
   late final EndpointGreeting greeting;
 
@@ -152,6 +169,7 @@ class Client extends _i1.ServerpodClientShared {
   Map<String, _i1.EndpointRef> get endpointRefLookup => {
         'knowledge': knowledge,
         'rag': rag,
+        'user': user,
         'greeting': greeting,
       };
 

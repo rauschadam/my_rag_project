@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:my_rag_project_client/my_rag_project_client.dart';
 import 'package:flutter/material.dart';
 import 'package:my_rag_project_flutter/chat_page.dart';
@@ -12,11 +10,11 @@ late Client client;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final ipAddress = Platform.isAndroid ? '10.0.2.2' : 'localhost';
+  final serverUrl = 'https://irremeable-prettily-sergio.ngrok-free.dev/';
 
   // Initialize the Client with the server URL and authentication key manager
   client = Client(
-    'http://$ipAddress:8080/',
+    serverUrl,
     authenticationKeyManager: FlutterAuthenticationKeyManager(),
   )
     // Checks the internet connection at all times

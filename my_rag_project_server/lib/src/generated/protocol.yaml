@@ -4,5 +4,7 @@ rag:
   - createSession:
   - triggerSchemaImport:
   - ask:
+user:
+  - countTestRows:
 greeting:
   - hello:

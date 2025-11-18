@@ -20,6 +20,7 @@ import 'model/list_panel_column_description.dart' as _i8;
 import 'model/list_panel_table_description.dart' as _i9;
 import 'model/rag_document.dart' as _i10;
 import 'model/rag_document_type.dart' as _i11;
+import 'model/test_model.dart' as _i12;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
@@ -28,6 +29,7 @@ export 'model/list_panel_column_description.dart';
 export 'model/list_panel_table_description.dart';
 export 'model/rag_document.dart';
 export 'model/rag_document_type.dart';
+export 'model/test_model.dart';
 
 class Protocol extends _i1.SerializationManagerServer {
   Protocol._();
@@ -479,6 +481,44 @@ class Protocol extends _i1.SerializationManagerServer {
       ],
       managed: true,
     ),
+    _i2.TableDefinition(
+      name: 'test_model',
+      dartName: 'TestModel',
+      schema: 'public',
+      module: 'my_rag_project',
+      columns: [
+        _i2.ColumnDefinition(
+          name: 'id',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'nextval(\'test_model_id_seq\'::regclass)',
+        ),
+        _i2.ColumnDefinition(
+          name: 'message',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _i2.IndexDefinition(
+          indexName: 'test_model_pkey',
+          tableSpace: null,
+          elements: [
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'id',
+            )
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: true,
+        )
+      ],
+      managed: true,
+    ),
     ..._i3.Protocol.targetTableDefinitions,
     ..._i2.Protocol.targetTableDefinitions,
   ];
@@ -513,6 +553,9 @@ class Protocol extends _i1.SerializationManagerServer {
     if (t == _i11.RAGDocumentType) {
       return _i11.RAGDocumentType.fromJson(data) as T;
     }
+    if (t == _i12.TestModel) {
+      return _i12.TestModel.fromJson(data) as T;
+    }
     if (t == _i1.getType<_i4.Greeting?>()) {
       return (data != null ? _i4.Greeting.fromJson(data) : null) as T;
     }
@@ -540,6 +583,9 @@ class Protocol extends _i1.SerializationManagerServer {
     }
     if (t == _i1.getType<_i11.RAGDocumentType?>()) {
       return (data != null ? _i11.RAGDocumentType.fromJson(data) : null) as T;
+    }
+    if (t == _i1.getType<_i12.TestModel?>()) {
+      return (data != null ? _i12.TestModel.fromJson(data) : null) as T;
     }
     try {
       return _i3.Protocol().deserialize<T>(data, t);
@@ -577,6 +623,9 @@ class Protocol extends _i1.SerializationManagerServer {
     }
     if (data is _i11.RAGDocumentType) {
       return 'RAGDocumentType';
+    }
+    if (data is _i12.TestModel) {
+      return 'TestModel';
     }
     className = _i2.Protocol().getClassNameForObject(data);
     if (className != null) {
@@ -619,6 +668,9 @@ class Protocol extends _i1.SerializationManagerServer {
     if (dataClassName == 'RAGDocumentType') {
       return deserialize<_i11.RAGDocumentType>(data['data']);
     }
+    if (dataClassName == 'TestModel') {
+      return deserialize<_i12.TestModel>(data['data']);
+    }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
       return _i2.Protocol().deserializeByClassName(data);
@@ -655,6 +707,8 @@ class Protocol extends _i1.SerializationManagerServer {
         return _i9.ListPanelTableDescription.t;
       case _i10.RAGDocument:
         return _i10.RAGDocument.t;
+      case _i12.TestModel:
+        return _i12.TestModel.t;
     }
     return null;
   }

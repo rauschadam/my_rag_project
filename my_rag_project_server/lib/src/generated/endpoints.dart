@@ -12,8 +12,9 @@
 import 'package:serverpod/serverpod.dart' as _i1;
 import '../endpoints/knowledge_endpoint.dart' as _i2;
 import '../endpoints/rag_endpoint.dart' as _i3;
-import '../greeting_endpoint.dart' as _i4;
-import 'package:serverpod_auth_server/serverpod_auth_server.dart' as _i5;
+import '../endpoints/user_endpoint.dart' as _i4;
+import '../greeting_endpoint.dart' as _i5;
+import 'package:serverpod_auth_server/serverpod_auth_server.dart' as _i6;
 
 class Endpoints extends _i1.EndpointDispatch {
   @override
@@ -31,7 +32,13 @@ class Endpoints extends _i1.EndpointDispatch {
           'rag',
           null,
         ),
-      'greeting': _i4.GreetingEndpoint()
+      'user': _i4.UserEndpoint()
+        ..initialize(
+          server,
+          'user',
+          null,
+        ),
+      'greeting': _i5.GreetingEndpoint()
         ..initialize(
           server,
           'greeting',
@@ -126,6 +133,21 @@ class Endpoints extends _i1.EndpointDispatch {
         ),
       },
     );
+    connectors['user'] = _i1.EndpointConnector(
+      name: 'user',
+      endpoint: endpoints['user']!,
+      methodConnectors: {
+        'countTestRows': _i1.MethodConnector(
+          name: 'countTestRows',
+          params: {},
+          call: (
+            _i1.Session session,
+            Map<String, dynamic> params,
+          ) async =>
+              (endpoints['user'] as _i4.UserEndpoint).countTestRows(session),
+        )
+      },
+    );
     connectors['greeting'] = _i1.EndpointConnector(
       name: 'greeting',
       endpoint: endpoints['greeting']!,
@@ -143,13 +165,13 @@ class Endpoints extends _i1.EndpointDispatch {
             _i1.Session session,
             Map<String, dynamic> params,
           ) async =>
-              (endpoints['greeting'] as _i4.GreetingEndpoint).hello(
+              (endpoints['greeting'] as _i5.GreetingEndpoint).hello(
             session,
             params['name'],
           ),
         )
       },
     );
-    modules['serverpod_auth'] = _i5.Endpoints()..initializeEndpoints(server);
+    modules['serverpod_auth'] = _i6.Endpoints()..initializeEndpoints(server);
   }
 }

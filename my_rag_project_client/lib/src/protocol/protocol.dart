@@ -18,7 +18,8 @@ import 'model/list_panel_column_description.dart' as _i6;
 import 'model/list_panel_table_description.dart' as _i7;
 import 'model/rag_document.dart' as _i8;
 import 'model/rag_document_type.dart' as _i9;
-import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i10;
+import 'model/test_model.dart' as _i10;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i11;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
@@ -27,6 +28,7 @@ export 'model/list_panel_column_description.dart';
 export 'model/list_panel_table_description.dart';
 export 'model/rag_document.dart';
 export 'model/rag_document_type.dart';
+export 'model/test_model.dart';
 export 'client.dart';
 
 class Protocol extends _i1.SerializationManager {
@@ -66,6 +68,9 @@ class Protocol extends _i1.SerializationManager {
     if (t == _i9.RAGDocumentType) {
       return _i9.RAGDocumentType.fromJson(data) as T;
     }
+    if (t == _i10.TestModel) {
+      return _i10.TestModel.fromJson(data) as T;
+    }
     if (t == _i1.getType<_i2.Greeting?>()) {
       return (data != null ? _i2.Greeting.fromJson(data) : null) as T;
     }
@@ -94,8 +99,11 @@ class Protocol extends _i1.SerializationManager {
     if (t == _i1.getType<_i9.RAGDocumentType?>()) {
       return (data != null ? _i9.RAGDocumentType.fromJson(data) : null) as T;
     }
+    if (t == _i1.getType<_i10.TestModel?>()) {
+      return (data != null ? _i10.TestModel.fromJson(data) : null) as T;
+    }
     try {
-      return _i10.Protocol().deserialize<T>(data, t);
+      return _i11.Protocol().deserialize<T>(data, t);
     } on _i1.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
@@ -128,7 +136,10 @@ class Protocol extends _i1.SerializationManager {
     if (data is _i9.RAGDocumentType) {
       return 'RAGDocumentType';
     }
-    className = _i10.Protocol().getClassNameForObject(data);
+    if (data is _i10.TestModel) {
+      return 'TestModel';
+    }
+    className = _i11.Protocol().getClassNameForObject(data);
     if (className != null) {
       return 'serverpod_auth.$className';
     }
@@ -165,9 +176,12 @@ class Protocol extends _i1.SerializationManager {
     if (dataClassName == 'RAGDocumentType') {
       return deserialize<_i9.RAGDocumentType>(data['data']);
     }
+    if (dataClassName == 'TestModel') {
+      return deserialize<_i10.TestModel>(data['data']);
+    }
     if (dataClassName.startsWith('serverpod_auth.')) {
       data['className'] = dataClassName.substring(15);
-      return _i10.Protocol().deserializeByClassName(data);
+      return _i11.Protocol().deserializeByClassName(data);
     }
     return super.deserializeByClassName(data);
   }

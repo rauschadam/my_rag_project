@@ -1,0 +1,5 @@
+# lib/src/model/test_model.yaml
+class: TestModel
+table: test_model
+fields:
+  message: String

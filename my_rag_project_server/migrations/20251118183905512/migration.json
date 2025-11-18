@@ -1,0 +1,46 @@
+{
+  "actions": [
+    {
+      "type": "createTable",
+      "createTable": {
+        "name": "test_model",
+        "dartName": "TestModel",
+        "module": "my_rag_project",
+        "schema": "public",
+        "columns": [
+          {
+            "name": "id",
+            "columnType": 6,
+            "isNullable": false,
+            "columnDefault": "nextval('test_model_id_seq'::regclass)",
+            "dartType": "int?"
+          },
+          {
+            "name": "message",
+            "columnType": 0,
+            "isNullable": false,
+            "dartType": "String"
+          }
+        ],
+        "foreignKeys": [],
+        "indexes": [
+          {
+            "indexName": "test_model_pkey",
+            "elements": [
+              {
+                "type": 0,
+                "definition": "id"
+              }
+            ],
+            "type": "btree",
+            "isUnique": true,
+            "isPrimary": true
+          }
+        ],
+        "managed": true
+      }
+    }
+  ],
+  "warnings": [],
+  "migrationApiVersion": 1
+}
