@@ -1,0 +1,8 @@
+class: ListPanelSupplierData
+table: list_panel_suplier_data
+fields:
+  vendorName: String
+  countryCode: String
+  category: String # Pl. "Szolgáltatás", "Termék", "Vegyes"
+  amount: String # Egyszerűség kedvéért stringben tároljuk most (pl. "1500 EUR")
+  lastActivity: DateTime

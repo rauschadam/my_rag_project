@@ -17,15 +17,17 @@ import 'model/chat_message.dart' as _i5;
 import 'model/chat_message_type.dart' as _i6;
 import 'model/chat_session.dart' as _i7;
 import 'model/list_panel_column_description.dart' as _i8;
-import 'model/list_panel_table_description.dart' as _i9;
-import 'model/rag_document.dart' as _i10;
-import 'model/rag_document_type.dart' as _i11;
-import 'model/test_model.dart' as _i12;
+import 'model/list_panel_supplier_data.dart' as _i9;
+import 'model/list_panel_table_description.dart' as _i10;
+import 'model/rag_document.dart' as _i11;
+import 'model/rag_document_type.dart' as _i12;
+import 'model/test_model.dart' as _i13;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
 export 'model/chat_session.dart';
 export 'model/list_panel_column_description.dart';
+export 'model/list_panel_supplier_data.dart';
 export 'model/list_panel_table_description.dart';
 export 'model/rag_document.dart';
 export 'model/rag_document_type.dart';
@@ -277,6 +279,69 @@ class Protocol extends _i1.SerializationManagerServer {
           isUnique: false,
           isPrimary: false,
         ),
+      ],
+      managed: true,
+    ),
+    _i2.TableDefinition(
+      name: 'list_panel_suplier_data',
+      dartName: 'ListPanelSupplierData',
+      schema: 'public',
+      module: 'my_rag_project',
+      columns: [
+        _i2.ColumnDefinition(
+          name: 'id',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault:
+              'nextval(\'list_panel_suplier_data_id_seq\'::regclass)',
+        ),
+        _i2.ColumnDefinition(
+          name: 'vendorName',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'countryCode',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'category',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'amount',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'lastActivity',
+          columnType: _i2.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _i2.IndexDefinition(
+          indexName: 'list_panel_suplier_data_pkey',
+          tableSpace: null,
+          elements: [
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'id',
+            )
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: true,
+        )
       ],
       managed: true,
     ),
@@ -544,17 +609,20 @@ class Protocol extends _i1.SerializationManagerServer {
     if (t == _i8.ListPanelColumnDescription) {
       return _i8.ListPanelColumnDescription.fromJson(data) as T;
     }
-    if (t == _i9.ListPanelTableDescription) {
-      return _i9.ListPanelTableDescription.fromJson(data) as T;
+    if (t == _i9.ListPanelSupplierData) {
+      return _i9.ListPanelSupplierData.fromJson(data) as T;
     }
-    if (t == _i10.RAGDocument) {
-      return _i10.RAGDocument.fromJson(data) as T;
+    if (t == _i10.ListPanelTableDescription) {
+      return _i10.ListPanelTableDescription.fromJson(data) as T;
     }
-    if (t == _i11.RAGDocumentType) {
-      return _i11.RAGDocumentType.fromJson(data) as T;
+    if (t == _i11.RAGDocument) {
+      return _i11.RAGDocument.fromJson(data) as T;
     }
-    if (t == _i12.TestModel) {
-      return _i12.TestModel.fromJson(data) as T;
+    if (t == _i12.RAGDocumentType) {
+      return _i12.RAGDocumentType.fromJson(data) as T;
+    }
+    if (t == _i13.TestModel) {
+      return _i13.TestModel.fromJson(data) as T;
     }
     if (t == _i1.getType<_i4.Greeting?>()) {
       return (data != null ? _i4.Greeting.fromJson(data) : null) as T;
@@ -573,19 +641,23 @@ class Protocol extends _i1.SerializationManagerServer {
           ? _i8.ListPanelColumnDescription.fromJson(data)
           : null) as T;
     }
-    if (t == _i1.getType<_i9.ListPanelTableDescription?>()) {
+    if (t == _i1.getType<_i9.ListPanelSupplierData?>()) {
+      return (data != null ? _i9.ListPanelSupplierData.fromJson(data) : null)
+          as T;
+    }
+    if (t == _i1.getType<_i10.ListPanelTableDescription?>()) {
       return (data != null
-          ? _i9.ListPanelTableDescription.fromJson(data)
+          ? _i10.ListPanelTableDescription.fromJson(data)
           : null) as T;
     }
-    if (t == _i1.getType<_i10.RAGDocument?>()) {
-      return (data != null ? _i10.RAGDocument.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i11.RAGDocument?>()) {
+      return (data != null ? _i11.RAGDocument.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i11.RAGDocumentType?>()) {
-      return (data != null ? _i11.RAGDocumentType.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i12.RAGDocumentType?>()) {
+      return (data != null ? _i12.RAGDocumentType.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i12.TestModel?>()) {
-      return (data != null ? _i12.TestModel.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i13.TestModel?>()) {
+      return (data != null ? _i13.TestModel.fromJson(data) : null) as T;
     }
     try {
       return _i3.Protocol().deserialize<T>(data, t);
@@ -615,16 +687,19 @@ class Protocol extends _i1.SerializationManagerServer {
     if (data is _i8.ListPanelColumnDescription) {
       return 'ListPanelColumnDescription';
     }
-    if (data is _i9.ListPanelTableDescription) {
+    if (data is _i9.ListPanelSupplierData) {
+      return 'ListPanelSupplierData';
+    }
+    if (data is _i10.ListPanelTableDescription) {
       return 'ListPanelTableDescription';
     }
-    if (data is _i10.RAGDocument) {
+    if (data is _i11.RAGDocument) {
       return 'RAGDocument';
     }
-    if (data is _i11.RAGDocumentType) {
+    if (data is _i12.RAGDocumentType) {
       return 'RAGDocumentType';
     }
-    if (data is _i12.TestModel) {
+    if (data is _i13.TestModel) {
       return 'TestModel';
     }
     className = _i2.Protocol().getClassNameForObject(data);
@@ -659,17 +734,20 @@ class Protocol extends _i1.SerializationManagerServer {
     if (dataClassName == 'ListPanelColumnDescription') {
       return deserialize<_i8.ListPanelColumnDescription>(data['data']);
     }
+    if (dataClassName == 'ListPanelSupplierData') {
+      return deserialize<_i9.ListPanelSupplierData>(data['data']);
+    }
     if (dataClassName == 'ListPanelTableDescription') {
-      return deserialize<_i9.ListPanelTableDescription>(data['data']);
+      return deserialize<_i10.ListPanelTableDescription>(data['data']);
     }
     if (dataClassName == 'RAGDocument') {
-      return deserialize<_i10.RAGDocument>(data['data']);
+      return deserialize<_i11.RAGDocument>(data['data']);
     }
     if (dataClassName == 'RAGDocumentType') {
-      return deserialize<_i11.RAGDocumentType>(data['data']);
+      return deserialize<_i12.RAGDocumentType>(data['data']);
     }
     if (dataClassName == 'TestModel') {
-      return deserialize<_i12.TestModel>(data['data']);
+      return deserialize<_i13.TestModel>(data['data']);
     }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
@@ -703,12 +781,14 @@ class Protocol extends _i1.SerializationManagerServer {
         return _i7.ChatSession.t;
       case _i8.ListPanelColumnDescription:
         return _i8.ListPanelColumnDescription.t;
-      case _i9.ListPanelTableDescription:
-        return _i9.ListPanelTableDescription.t;
-      case _i10.RAGDocument:
-        return _i10.RAGDocument.t;
-      case _i12.TestModel:
-        return _i12.TestModel.t;
+      case _i9.ListPanelSupplierData:
+        return _i9.ListPanelSupplierData.t;
+      case _i10.ListPanelTableDescription:
+        return _i10.ListPanelTableDescription.t;
+      case _i11.RAGDocument:
+        return _i11.RAGDocument.t;
+      case _i13.TestModel:
+        return _i13.TestModel.t;
     }
     return null;
   }

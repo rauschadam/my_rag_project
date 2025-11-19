@@ -10,6 +10,63 @@ class SchemaImporter {
     final genAi = GenerativeAi();
     session.log('Starting schema import...', level: LogLevel.info);
 
+    // Fake data for the 125 list panel
+    final oldData = await ListPanelSupplierData.db
+        .find(session, where: (_) => Constant.bool(true));
+    for (var d in oldData) {
+      await ListPanelSupplierData.db.deleteRow(session, d);
+    }
+
+    final mockRows = [
+      ListPanelSupplierData(
+        vendorName: 'TÜV NORD Czech s.r.o.',
+        countryCode: 'CZ',
+        category: 'Szolgáltatás',
+        amount: '1500 EUR',
+        lastActivity: DateTime.now().subtract(Duration(days: 20)),
+      ),
+      ListPanelSupplierData(
+        vendorName: "Lloyd's Register EMEA",
+        countryCode: 'CZ',
+        category: 'Szolgáltatás',
+        amount: '2300 EUR',
+        lastActivity: DateTime.now().subtract(Duration(days: 45)),
+      ),
+      ListPanelSupplierData(
+        vendorName: 'FleetCor UK International Management Ltd. CZ',
+        countryCode: 'CZ',
+        category: 'Szolgáltatás',
+        amount: '500 EUR',
+        lastActivity: DateTime.now().subtract(Duration(days: 10)),
+      ),
+      ListPanelSupplierData(
+        vendorName: 'Apple Distribution International Ltd.',
+        countryCode: 'CZ',
+        category: 'Termék',
+        amount: '12000 EUR',
+        lastActivity: DateTime.now().subtract(Duration(days: 5)),
+      ),
+      ListPanelSupplierData(
+        vendorName: 'VITKOVICE STEEL, a.s.',
+        countryCode: 'CZ',
+        category: 'Vegyes',
+        amount: '5000 EUR',
+        lastActivity: DateTime.now().subtract(Duration(days: 100)),
+      ),
+      ListPanelSupplierData(
+        vendorName: 'Öveges Acél Kft.',
+        countryCode: 'HU',
+        category: 'Termék',
+        amount: '300000 HUF',
+        lastActivity: DateTime.now().subtract(Duration(days: 2)),
+      ),
+    ];
+
+    for (var row in mockRows) {
+      await ListPanelSupplierData.db.insertRow(session, row);
+    }
+    session.log('Mock Supplier Data imported: ${mockRows.length} rows');
+
     // --- 1. IMPORT LIST PANELS (Tables) ---
     // Example data from spec: DistributionId 15 and 125
     final panels = [

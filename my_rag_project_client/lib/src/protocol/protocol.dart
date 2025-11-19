@@ -15,16 +15,18 @@ import 'model/chat_message.dart' as _i3;
 import 'model/chat_message_type.dart' as _i4;
 import 'model/chat_session.dart' as _i5;
 import 'model/list_panel_column_description.dart' as _i6;
-import 'model/list_panel_table_description.dart' as _i7;
-import 'model/rag_document.dart' as _i8;
-import 'model/rag_document_type.dart' as _i9;
-import 'model/test_model.dart' as _i10;
-import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i11;
+import 'model/list_panel_supplier_data.dart' as _i7;
+import 'model/list_panel_table_description.dart' as _i8;
+import 'model/rag_document.dart' as _i9;
+import 'model/rag_document_type.dart' as _i10;
+import 'model/test_model.dart' as _i11;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i12;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
 export 'model/chat_session.dart';
 export 'model/list_panel_column_description.dart';
+export 'model/list_panel_supplier_data.dart';
 export 'model/list_panel_table_description.dart';
 export 'model/rag_document.dart';
 export 'model/rag_document_type.dart';
@@ -59,17 +61,20 @@ class Protocol extends _i1.SerializationManager {
     if (t == _i6.ListPanelColumnDescription) {
       return _i6.ListPanelColumnDescription.fromJson(data) as T;
     }
-    if (t == _i7.ListPanelTableDescription) {
-      return _i7.ListPanelTableDescription.fromJson(data) as T;
+    if (t == _i7.ListPanelSupplierData) {
+      return _i7.ListPanelSupplierData.fromJson(data) as T;
     }
-    if (t == _i8.RAGDocument) {
-      return _i8.RAGDocument.fromJson(data) as T;
+    if (t == _i8.ListPanelTableDescription) {
+      return _i8.ListPanelTableDescription.fromJson(data) as T;
     }
-    if (t == _i9.RAGDocumentType) {
-      return _i9.RAGDocumentType.fromJson(data) as T;
+    if (t == _i9.RAGDocument) {
+      return _i9.RAGDocument.fromJson(data) as T;
     }
-    if (t == _i10.TestModel) {
-      return _i10.TestModel.fromJson(data) as T;
+    if (t == _i10.RAGDocumentType) {
+      return _i10.RAGDocumentType.fromJson(data) as T;
+    }
+    if (t == _i11.TestModel) {
+      return _i11.TestModel.fromJson(data) as T;
     }
     if (t == _i1.getType<_i2.Greeting?>()) {
       return (data != null ? _i2.Greeting.fromJson(data) : null) as T;
@@ -88,22 +93,26 @@ class Protocol extends _i1.SerializationManager {
           ? _i6.ListPanelColumnDescription.fromJson(data)
           : null) as T;
     }
-    if (t == _i1.getType<_i7.ListPanelTableDescription?>()) {
+    if (t == _i1.getType<_i7.ListPanelSupplierData?>()) {
+      return (data != null ? _i7.ListPanelSupplierData.fromJson(data) : null)
+          as T;
+    }
+    if (t == _i1.getType<_i8.ListPanelTableDescription?>()) {
       return (data != null
-          ? _i7.ListPanelTableDescription.fromJson(data)
+          ? _i8.ListPanelTableDescription.fromJson(data)
           : null) as T;
     }
-    if (t == _i1.getType<_i8.RAGDocument?>()) {
-      return (data != null ? _i8.RAGDocument.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i9.RAGDocument?>()) {
+      return (data != null ? _i9.RAGDocument.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i9.RAGDocumentType?>()) {
-      return (data != null ? _i9.RAGDocumentType.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i10.RAGDocumentType?>()) {
+      return (data != null ? _i10.RAGDocumentType.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i10.TestModel?>()) {
-      return (data != null ? _i10.TestModel.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i11.TestModel?>()) {
+      return (data != null ? _i11.TestModel.fromJson(data) : null) as T;
     }
     try {
-      return _i11.Protocol().deserialize<T>(data, t);
+      return _i12.Protocol().deserialize<T>(data, t);
     } on _i1.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
@@ -127,19 +136,22 @@ class Protocol extends _i1.SerializationManager {
     if (data is _i6.ListPanelColumnDescription) {
       return 'ListPanelColumnDescription';
     }
-    if (data is _i7.ListPanelTableDescription) {
+    if (data is _i7.ListPanelSupplierData) {
+      return 'ListPanelSupplierData';
+    }
+    if (data is _i8.ListPanelTableDescription) {
       return 'ListPanelTableDescription';
     }
-    if (data is _i8.RAGDocument) {
+    if (data is _i9.RAGDocument) {
       return 'RAGDocument';
     }
-    if (data is _i9.RAGDocumentType) {
+    if (data is _i10.RAGDocumentType) {
       return 'RAGDocumentType';
     }
-    if (data is _i10.TestModel) {
+    if (data is _i11.TestModel) {
       return 'TestModel';
     }
-    className = _i11.Protocol().getClassNameForObject(data);
+    className = _i12.Protocol().getClassNameForObject(data);
     if (className != null) {
       return 'serverpod_auth.$className';
     }
@@ -167,21 +179,24 @@ class Protocol extends _i1.SerializationManager {
     if (dataClassName == 'ListPanelColumnDescription') {
       return deserialize<_i6.ListPanelColumnDescription>(data['data']);
     }
+    if (dataClassName == 'ListPanelSupplierData') {
+      return deserialize<_i7.ListPanelSupplierData>(data['data']);
+    }
     if (dataClassName == 'ListPanelTableDescription') {
-      return deserialize<_i7.ListPanelTableDescription>(data['data']);
+      return deserialize<_i8.ListPanelTableDescription>(data['data']);
     }
     if (dataClassName == 'RAGDocument') {
-      return deserialize<_i8.RAGDocument>(data['data']);
+      return deserialize<_i9.RAGDocument>(data['data']);
     }
     if (dataClassName == 'RAGDocumentType') {
-      return deserialize<_i9.RAGDocumentType>(data['data']);
+      return deserialize<_i10.RAGDocumentType>(data['data']);
     }
     if (dataClassName == 'TestModel') {
-      return deserialize<_i10.TestModel>(data['data']);
+      return deserialize<_i11.TestModel>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth.')) {
       data['className'] = dataClassName.substring(15);
-      return _i11.Protocol().deserializeByClassName(data);
+      return _i12.Protocol().deserializeByClassName(data);
     }
     return super.deserializeByClassName(data);
   }

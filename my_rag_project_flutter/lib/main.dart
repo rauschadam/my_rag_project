@@ -10,6 +10,7 @@ late Client client;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  /// The ngrok URL for testing / developing
   final serverUrl = 'https://irremeable-prettily-sergio.ngrok-free.dev/';
 
   // Initialize the Client with the server URL and authentication key manager

@@ -48,7 +48,7 @@ class EndpointRag extends _i1.EndpointRef {
   String get name => 'rag';
 
   /// Creates a new chat session in the database.
-  /// This is called by the mobile app on startup to initialize a conversation.
+  /// Called by the mobile app on startup.
   _i2.Future<_i3.ChatSession> createSession() =>
       caller.callServerEndpoint<_i3.ChatSession>(
         'rag',
@@ -56,6 +56,7 @@ class EndpointRag extends _i1.EndpointRef {
         {},
       );
 
+  /// Triggers the import of schema data and mock data into the vector store.
   _i2.Future<void> triggerSchemaImport() => caller.callServerEndpoint<void>(
         'rag',
         'triggerSchemaImport',
@@ -63,7 +64,7 @@ class EndpointRag extends _i1.EndpointRef {
       );
 
   /// The main chat method.
-  /// It handles the logic for switching between Schema Search (SQL structure)
+  /// Handles the logic for switching between Schema Search (SQL/Mock DB)
   /// and Content Search (Documents), maintains history, and saves messages.
   _i2.Stream<String> ask(
     int chatSessionId,
