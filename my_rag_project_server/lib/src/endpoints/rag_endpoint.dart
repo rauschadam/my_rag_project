@@ -25,7 +25,12 @@ class RagEndpoint extends Endpoint {
 
   /// The main chat method.
   /// Handles the logic for switching between Schema Search (SQL/Mock DB)
-  /// and Content Search (Documents), maintains history, and saves messages.
+  /// and Content Search (Documents).
+  ///
+  /// CRITICAL SECURITY NOTE:
+  /// When in Schema Search mode (`searchListPanels` is true), actual data is NEVER
+  /// sent back to the cloud AI. The AI is only used to PLAN the query.
+  /// The execution and response formatting happen locally (Offline) to prevent data leakage.
   Stream<String> ask(Session session, int chatSessionId, String question,
       bool searchListPanels) async* {
     final genAi = GenerativeAi();
@@ -54,150 +59,225 @@ class RagEndpoint extends Endpoint {
       ),
     );
 
-    // 4. Determine Context and Prompt based on the selected mode
-    String systemPrompt;
-    List<RAGDocument> documents = [];
-    String contextData = "";
-
+    // 4. Handle Logic based on mode
     if (searchListPanels) {
-      // --- MODE A: REAL RAG / SIMULATION (Database Structure) ---
-      // Step A: Router - Identify relevant list panels
+      // --- MODE A: SECURE ERP DATA QUERY (REAL RAG) ---
+
+      // Step A: Router & Planner (AI)
+      // We search for relevant metadata (descriptions of tables), not the data itself.
       final panels = await findRelevantListPanels(session, question);
 
-      // Create a string description of available panels for the AI planner
-      String panelDesc = panels
-          .map((p) => "ID: ${p.distributionId}, Név: ${p.nameHun}")
-          .join("\n");
+      // Construct a description of available tables for the AI.
+      // In a real app, you would map 'distributionId' to actual SQL table names here.
+      // For this demo, we map ID 125 to 'mock_supplier_data'.
+      String panelDesc = panels.map((p) {
+        String tableName = (p.distributionId == 125)
+            ? 'list_panel_suplier_data'
+            : 'unknown_table';
+        return "ID: ${p.distributionId}, SQL Tábla: $tableName, Név: ${p.nameHun}\n   Leírás: ${p.descriptionHun}";
+      }).join("\n\n");
 
-      // HUNGARIAN PROMPT: Ask the AI to plan the database query in JSON format.
+      // HUNGARIAN PROMPT: Ask the AI to plan the SQL query in JSON format.
       final queryPlanPrompt = '''
 A felhasználó kérdése: "$question"
 
-Elérhető panelek:
+Elérhető táblák definíciója:
 $panelDesc
 
-A 125-ös panel (Szállítók) mezői:
-- vendorName (Szállító neve)
-- countryCode (Országkód, pl. HU, CZ, DE)
-- category (Kategória, pl. Szolgáltatás, Termék, Vegyes)
-- amount (Összeg)
+A 'list_panel_suplier_data' (Szállítók) tábla fontosabb mezői (PONTOSAN ezeket használd):
+- vendorName (Szállító neve, szöveg)
+- countryCode (Országkód, pl. HU, CZ, DE, szöveg)
+- category (Kategória, pl. Szolgáltatás, Termék, szöveg)
+- amount (Összeg, szöveg)
 
-Feladat: Elemzed a kérdést és készíts egy JSON struktúrát a lekérdezéshez.
-A kimenet CSAK a nyers JSON legyen (markdown nélkül).
+FELADAT: Elemzed a kérdést és készíts egy SQL-szerű lekérdezési tervet JSON formátumban.
+A "filters" tömbben sorold fel a feltételeket.
+Az operátor lehet: "=", "!=", ">", "<", "ILIKE" (szöveges keresésnél).
 
-Formátum:
+Kimeneti formátum (Csak a nyers JSON):
 {
-  "panelId": 125,
-  "filters": {
-    "countryCode": "CZ",  // Ha országra szűr (kétbetűs kód)
-    "category": "Szolgáltatás" // Ha kategóriára szűr
-  }
+  "tableName": "list_panel_suplier_data",
+  "filters": [
+    {"column": "countryCode", "operator": "=", "value": "CZ"},
+    {"column": "vendorName", "operator": "ILIKE", "value": "%Szolgáltatás%"}
+  ],
+  "limit": 10
 }
 ''';
 
-      // Call AI to get the query plan
+      // Call Cloud AI to get the PLAN (No sensitive data sent here, only schema info)
       final queryPlanJson = await genAi.generateSimpleAnswer(queryPlanPrompt);
       session.log("AI Query Plan: $queryPlanJson");
 
-      // Step B: Execution - Run the query against the local database
-      String dbResultString = "Nem találtam adatot a megadott feltételekkel.";
+      // Step B: Generic Execution (Local Dart Code)
+      String finalResponse = "";
 
       try {
-        // Clean the JSON string (remove potential markdown code blocks)
         final cleanJson = queryPlanJson
             .replaceAll('```json', '')
             .replaceAll('```', '')
             .trim();
         final plan = jsonDecode(cleanJson);
 
-        // SIMULATION LOGIC: Query the ListPanekSupplierData table
-        if (plan['panelId'] == 125) {
-          final filters = plan['filters'];
+        // Execute the dynamic query locally
+        final results = await _executeDynamicQuery(session, plan);
 
-          // Build dynamic query
-          Expression whereClause = Constant.bool(true);
+        // Step C: Synthesis (Offline Formatting)
+        // We format the data locally into a Markdown string.
+        // This ensures the actual rows (vendor names, money) are NEVER sent to the AI API.
 
-          if (filters['countryCode'] != null) {
-            whereClause = whereClause &
-                ListPanelSupplierData.t.countryCode
-                    .equals(filters['countryCode']);
-          }
-          if (filters['category'] != null) {
-            whereClause = whereClause &
-                ListPanelSupplierData.t.category.equals(filters['category']);
-          }
+        if (results.isEmpty) {
+          finalResponse =
+              "Nem találtam adatot a megadott feltételekkel az adatbázisban.";
+        } else {
+          finalResponse =
+              "**Lekérdezés eredménye (${results.length} találat):**\n\n";
 
-          // Execute query
-          final results = await ListPanelSupplierData.db
-              .find(session, where: (_) => whereClause);
+          // Generic formatter: iterates over all columns in the result
+          for (var row in results) {
+            finalResponse += "- ";
+            var infoParts = <String>[];
 
-          if (results.isNotEmpty) {
-            dbResultString =
-                "Lekérdezés eredménye (Találatok száma: ${results.length}):\n";
-            for (var row in results) {
-              dbResultString +=
-                  "- ${row.vendorName} (Ország: ${row.countryCode}, Típus: ${row.category}, Összeg: ${row.amount})\n";
+            // Try to find a "main" column for the title (heuristic)
+            String? title;
+            if (row.containsKey('vendor_name')) {
+              title = row['vendor_name'];
+            } else if (row.containsKey('name')) {
+              title = row['name'];
             }
+
+            if (title != null) {
+              finalResponse += "**$title** ";
+            }
+
+            // Add other details
+            row.forEach((key, value) {
+              if (key != 'id' && key != 'vendor_name' && key != 'name') {
+                // Format dates nicely if needed
+                String valStr = value.toString();
+                if (value is DateTime) valStr = valStr.substring(0, 10);
+                infoParts.add("_$key: ${valStr}_");
+              }
+            });
+
+            if (infoParts.isNotEmpty) {
+              finalResponse += "(${infoParts.join(', ')})";
+            }
+            finalResponse += "\n";
           }
+
+          finalResponse +=
+              "\n*(Az adatokat biztonságosan, offline generáltam)*";
         }
       } catch (e) {
         session.log("Query execution error: $e", level: LogLevel.error);
-        dbResultString = "Hiba történt a lekérdezés értelmezésekor.";
+        finalResponse =
+            "Hiba történt a lekérdezés feldolgozása közben. (Részletek a szerver logban)";
       }
 
-      // Step C: Synthesis - Provide the real data to the AI for the final answer
-      contextData = dbResultString;
+      // Stream the local response back to the client
+      yield finalResponse;
 
-      // HUNGARIAN PROMPT: Instruct the AI to act as an ERP assistant using the data.
-      systemPrompt = '''
-Te egy intelligens ERP asszisztens vagy.
-A felhasználó kérdésére KIZÁRÓLAG az alábbi adatbázis eredmények alapján válaszolj.
+      // Save the model response to history
+      await ChatMessage.db.insertRow(
+        session,
+        ChatMessage(
+          chatSessionId: chatSessionId,
+          message: finalResponse,
+          type: ChatMessageType.model,
+          createdAt: DateTime.now(),
+        ),
+      );
 
-Adatbázis eredménye:
-$contextData
-
-Instrukciók:
-1. Válaszolj magyarul.
-2. Légy pontos és tényszerű.
-3. Ha van lista, szépen formázva sorold fel.
-4. Ha nem találtál adatot, jelezd udvariasan.
-''';
+      // Return immediately to avoid calling the general AI logic below
+      return;
     } else {
-      // --- MODE B: CONTENT RAG (Documentation) ---
-      // Search for relevant knowledge documents based on embeddings.
-      documents = await searchDocuments(session, question);
+      // --- MODE B: CONTENT RAG (Documentation Search) ---
+      // This mode uses the Cloud AI to generate the answer based on documents.
+      // Suitable for public or non-sensitive documentation.
 
-      // HUNGARIAN PROMPT: General assistant for documentation.
-      systemPrompt =
+      List<RAGDocument> documents = await searchDocuments(session, question);
+
+      // HUNGARIAN PROMPT: General assistant prompt
+      String systemPrompt =
           'Te egy segítőkész AI asszisztens vagy. Válaszolj a kérdésre KIZÁRÓLAG a megadott dokumentumok alapján. Ha a válasz nincs benne a dokumentumokban, mondd azt: "A megadott kontextus alapján nem tudok válaszolni".';
+
+      final answerStream = genAi.generateConversationalAnswer(
+        question: question,
+        systemPrompt: systemPrompt,
+        documents: documents,
+        conversation: history,
+      );
+
+      var fullAnswer = '';
+      await for (var chunk in answerStream) {
+        fullAnswer += chunk;
+        yield chunk;
+      }
+
+      await ChatMessage.db.insertRow(
+        session,
+        ChatMessage(
+          chatSessionId: chatSessionId,
+          message: fullAnswer,
+          type: ChatMessageType.model,
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+  }
+
+  /// Executes a dynamic SQL query based on the JSON plan.
+  /// Uses raw SQL with parameter substitution for safety.
+  Future<List<Map<String, dynamic>>> _executeDynamicQuery(
+      Session session, Map<String, dynamic> plan) async {
+    // --- 1. Setup query data ---
+    final tableName = plan['tableName'];
+    final filters = plan['filters'] as List? ?? [];
+    final limit = plan['limit'] ?? 10;
+
+    // --- 2. Build the SQL query safely ---
+    String query = "SELECT * FROM \"$tableName\" WHERE 1=1";
+
+    for (int i = 0; i < filters.length; i++) {
+      final f = filters[i];
+      final column = f['column'];
+      final operator = f['operator'];
+      final value = f['value'];
+
+      // Basic SQL Injection prevention for column names
+      // (Only allow alphanumeric and underscores)
+      if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(column)) continue;
+
+      // Validate operator
+      const allowedOperators = {'=', '!=', '>', '<', '>=', '<=', 'ILIKE'};
+      if (!allowedOperators.contains(operator.toUpperCase())) continue;
+
+      String valSql;
+      if (value is num) {
+        valSql = "$value";
+      } else if (value is bool) {
+        valSql = "$value";
+      } else {
+        // On strings we use a single qute for safety
+        final safeValue = value.toString().replaceAll("'", "''");
+        valSql = "'$safeValue'";
+      }
+
+      query += " AND \"$column\" $operator $valSql";
     }
 
-    // 5. Generate the answer stream
-    // We pass the constructed systemPrompt and context/documents.
-    final answerStream = genAi.generateConversationalAnswer(
-      question: question,
-      systemPrompt: systemPrompt,
-      documents: documents, // Used only in Content RAG mode
-      conversation: history,
-    );
+    // Enforce a hard limit to prevent fetching huge datasets
+    int safeLimit = (limit is int && limit > 0 && limit <= 50) ? limit : 10;
+    query += " LIMIT $safeLimit";
 
-    // 6. Stream the answer back to the client and accumulate it for saving
-    var fullAnswer = '';
-    await for (var chunk in answerStream) {
-      fullAnswer += chunk;
-      yield chunk;
-    }
+    session.log("Executing Raw SQL: $query");
 
-    // 7. Save the AI'S full answer to the database
-    await ChatMessage.db.insertRow(
-      session,
-      ChatMessage(
-        chatSessionId: chatSessionId,
-        message: fullAnswer,
-        type: ChatMessageType.model,
-        createdAt: DateTime.now(),
-      ),
-    );
+    // Execute raw query via Serverpod
+    final result = await session.db.unsafeQuery(query);
+
+    // Convert to List<Map>
+    return result.map((row) => row.toColumnMap()).toList();
   }
 
   /// Helper function to generate a random string token.

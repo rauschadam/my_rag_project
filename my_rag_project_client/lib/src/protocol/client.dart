@@ -65,7 +65,12 @@ class EndpointRag extends _i1.EndpointRef {
 
   /// The main chat method.
   /// Handles the logic for switching between Schema Search (SQL/Mock DB)
-  /// and Content Search (Documents), maintains history, and saves messages.
+  /// and Content Search (Documents).
+  ///
+  /// CRITICAL SECURITY NOTE:
+  /// When in Schema Search mode (`searchListPanels` is true), actual data is NEVER
+  /// sent back to the cloud AI. The AI is only used to PLAN the query.
+  /// The execution and response formatting happen locally (Offline) to prevent data leakage.
   _i2.Stream<String> ask(
     int chatSessionId,
     String question,
