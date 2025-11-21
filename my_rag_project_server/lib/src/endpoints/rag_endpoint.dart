@@ -77,6 +77,9 @@ class RagEndpoint extends Endpoint {
         return "ID: ${p.distributionId}, SQL Tábla: $tableName, Név: ${p.nameHun}\n   Leírás: ${p.descriptionHun}";
       }).join("\n\n");
 
+      /// Current date for the AI
+      final currentDate = DateTime.now().toIso8601String().substring(0, 10);
+
       // HUNGARIAN PROMPT: Ask the AI to plan the SQL query in JSON format.
       final queryPlanPrompt = '''
 A felhasználó kérdése: "$question"
@@ -89,10 +92,16 @@ A 'list_panel_suplier_data' (Szállítók) tábla fontosabb mezői (PONTOSAN eze
 - countryCode (Országkód, pl. HU, CZ, DE, szöveg)
 - category (Kategória, pl. Szolgáltatás, Termék, szöveg)
 - amount (Összeg, szöveg)
+- lastActivity (Utolsó aktivitás dátuma, pl. "2025-10-01", Dátum típus)
 
 FELADAT: Elemzed a kérdést és készíts egy SQL-szerű lekérdezési tervet JSON formátumban.
 A "filters" tömbben sorold fel a feltételeket.
 Az operátor lehet: "=", "!=", ">", "<", "ILIKE" (szöveges keresésnél).
+
+Szabályok:
+1. **Dátumok:** Ha a kérdés időtartamra vonatkozik (pl. "elmúlt 6 hónap"), számold ki a pontos kezdő dátumot a Mai dátumhoz ($currentDate) képest! Használd a ">=" operátort a 'lastActivity' mezőn.
+2. **Rendezés:** Ha a kérdés "legnagyobb", "legkisebb" vagy sorrendet kér, használd az "orderBy" mezőt.
+3. **Összeg:** Az 'amount' mező szöveges (pl. "1500 EUR"), de próbálj rá szűrni, ha konkrét összeg szerepel.
 
 Kimeneti formátum (Csak a nyers JSON):
 {
@@ -234,9 +243,10 @@ Kimeneti formátum (Csak a nyers JSON):
     // --- 1. Setup query data ---
     final tableName = plan['tableName'];
     final filters = plan['filters'] as List? ?? [];
+    final orderBy = plan['orderBy'] as Map<String, dynamic>?;
     final limit = plan['limit'] ?? 10;
 
-    // --- 2. Build the SQL query safely ---
+    // --- SELECT ---
     String query = "SELECT * FROM \"$tableName\" WHERE 1=1";
 
     for (int i = 0; i < filters.length; i++) {
@@ -264,11 +274,26 @@ Kimeneti formátum (Csak a nyers JSON):
         valSql = "'$safeValue'";
       }
 
+      // --- AND ---
       query += " AND \"$column\" $operator $valSql";
     }
 
+    // --- ORDER BY ---
+    if (orderBy != null && orderBy['column'] != null) {
+      final orderCol = orderBy['column'];
+      final direction = (orderBy['direction'] == 'DESC') ? 'DESC' : 'ASC';
+
+      if (RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(orderCol)) {
+        // Trükk: Mivel az 'amount' nálunk most String ("1500 EUR"),
+        // SQL szinten nem tudunk rá jól rendezni castolás nélkül.
+        // Éles rendszerben ez NUMERIC lenne. Most egyszerűen szövegként rendezünk.
+        query += " ORDER BY \"$orderCol\" $direction";
+      }
+    }
+    // --- LIMIT ---
     // Enforce a hard limit to prevent fetching huge datasets
     int safeLimit = (limit is int && limit > 0 && limit <= 50) ? limit : 10;
+
     query += " LIMIT $safeLimit";
 
     session.log("Executing Raw SQL: $query");
