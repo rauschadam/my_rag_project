@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:my_rag_project_flutter/chat_message_display.dart';
 import 'package:my_rag_project_flutter/main.dart';
+import 'package:my_rag_project_flutter/search_mode.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -23,8 +24,8 @@ class _ChatPageState extends State<ChatPage> {
   /// Controller for scrolling the chat view
   final ScrollController _scrollController = ScrollController();
 
-  /// Decides between Document and ListPanel search
-  bool _searchDataBase = false;
+  /// Decides between Document and ListPanel search logic
+  SearchMode _searchMode = SearchMode.sql;
 
   /// Works with the users speech message
   final SpeechToText _speechToText = SpeechToText();
@@ -150,8 +151,9 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
 
     try {
+      final bool useDatabase = _searchMode == SearchMode.sql;
       // Call the RAG endpoint on the server (returns a Stream)
-      final stream = client.rag.ask(_currentSessionId!, text, _searchDataBase);
+      final stream = client.rag.ask(_currentSessionId!, text, useDatabase);
 
       // Process the stream chunks as they arrive
       await for (final chunk in stream) {
@@ -199,7 +201,9 @@ class _ChatPageState extends State<ChatPage> {
 
             // Kiírjuk, épp melyik módban vagyunk
             Text(
-              _searchDataBase ? 'Mód: Adatbázis (SQL)' : 'Mód: Dokumentumok',
+              _searchMode == SearchMode.sql
+                  ? 'Mód: Adatbázis (SQL)'
+                  : 'Mód: Dokumentumok',
               style: const TextStyle(fontSize: 12),
             ),
           ],
@@ -228,17 +232,6 @@ class _ChatPageState extends State<ChatPage> {
                 );
               }
             },
-          ),
-          Switch(
-            value: _searchDataBase,
-            onChanged: (value) {
-              setState(() {
-                _searchDataBase = value;
-              });
-              // Opcionális: új sessiont indíthatunk váltáskor,
-              // hogy ne keveredjen a kontextus, de nem kötelező.
-            },
-            activeThumbColor: Colors.green,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -345,6 +338,7 @@ class _ChatPageState extends State<ChatPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        _buildModeButton(),
                         // Mic button
                         GestureDetector(
                           onLongPress: _startListening,
@@ -407,6 +401,148 @@ class _ChatPageState extends State<ChatPage> {
       child: Icon(
         _speechToText.isListening ? Icons.mic_off : Icons.mic,
         size: 20,
+      ),
+    );
+  }
+
+  void _showModeSelectionSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text(
+                  "Válassz keresési módot",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // 1. Option: Documents
+                _buildModeOption(
+                  icon: Icons.description_outlined,
+                  title: "Dokumentumok",
+                  subtitle: "Keresés a feltöltött fájlokban",
+                  isSelected: _searchMode == SearchMode.documents,
+                  onTap: () {
+                    setState(() {
+                      _searchMode = SearchMode.documents;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+
+                const SizedBox(height: 8),
+
+                // 2. Option: DataBase
+                _buildModeOption(
+                  icon: Icons.storage_outlined,
+                  title: "Adatbázis (SQL)",
+                  subtitle: "Lekérdezés az SQL táblákból",
+                  isSelected: _searchMode == SearchMode.sql,
+                  onTap: () {
+                    setState(() {
+                      _searchMode = SearchMode.sql;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildModeOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? Theme.of(context).primaryColor.withAlpha(25) : null,
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected
+              ? Border.all(color: Theme.of(context).primaryColor, width: 2)
+              : Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Theme.of(context).primaryColor : Colors.grey,
+              size: 28,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? Theme.of(context).primaryColor
+                          : Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle, color: Theme.of(context).primaryColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeButton() {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12.0),
+      child: FloatingActionButton.small(
+        shape: const CircleBorder(side: BorderSide.none),
+        elevation: 0,
+        backgroundColor: Colors.grey.shade200,
+        foregroundColor: Colors.black87,
+        onPressed: _showModeSelectionSheet,
+        child: Icon(
+          _searchMode == SearchMode.sql ? Icons.storage : Icons.description,
+          size: 20,
+        ),
       ),
     );
   }
