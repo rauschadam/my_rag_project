@@ -94,7 +94,15 @@ A 'list_panel_suplier_data' (Szállítók) tábla fontosabb mezői (PONTOSAN eze
 - amount (Összeg, szöveg)
 - lastActivity (Utolsó aktivitás dátuma, pl. "2025-10-01", Dátum típus)
 
-FELADAT: Elemzed a kérdést és készíts egy SQL-szerű lekérdezési tervet JSON formátumban.
+A 'mock_country_data' (Országok - Panel 15):
+   - countryName (Ország neve, pl. "Magyarország")
+   - isoCode (Kétbetűs kód, pl. HU)
+   - isEuMember (EU tag? true/false)
+   - isNatoMember (NATO tag? true/false)
+
+FELADAT: 
+Döntsd el, melyik tábla releváns a kérdéshez (Szállítók VAGY Országok).
+Elemzed a kérdést és készíts egy SQL-szerű lekérdezési tervet JSON formátumban.
 A "filters" tömbben sorold fel a feltételeket.
 Az operátor lehet: "=", "!=", ">", "<", "ILIKE" (szöveges keresésnél).
 
@@ -105,7 +113,7 @@ Szabályok:
 
 Kimeneti formátum (Csak a nyers JSON):
 {
-  "tableName": "list_panel_suplier_data",
+  "tableName": "list_panel_suplier_data", // VAGY "mock_country_data"
   "filters": [
     {"column": "countryCode", "operator": "=", "value": "CZ"},
     {"column": "vendorName", "operator": "ILIKE", "value": "%Szolgáltatás%"}

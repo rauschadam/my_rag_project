@@ -19,9 +19,10 @@ import 'model/chat_session.dart' as _i7;
 import 'model/list_panel_column_description.dart' as _i8;
 import 'model/list_panel_supplier_data.dart' as _i9;
 import 'model/list_panel_table_description.dart' as _i10;
-import 'model/rag_document.dart' as _i11;
-import 'model/rag_document_type.dart' as _i12;
-import 'model/test_model.dart' as _i13;
+import 'model/mock_country_data.dart' as _i11;
+import 'model/rag_document.dart' as _i12;
+import 'model/rag_document_type.dart' as _i13;
+import 'model/test_model.dart' as _i14;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
@@ -29,6 +30,7 @@ export 'model/chat_session.dart';
 export 'model/list_panel_column_description.dart';
 export 'model/list_panel_supplier_data.dart';
 export 'model/list_panel_table_description.dart';
+export 'model/mock_country_data.dart';
 export 'model/rag_document.dart';
 export 'model/rag_document_type.dart';
 export 'model/test_model.dart';
@@ -425,6 +427,62 @@ class Protocol extends _i1.SerializationManagerServer {
       managed: true,
     ),
     _i2.TableDefinition(
+      name: 'mock_country_data',
+      dartName: 'MockCountryData',
+      schema: 'public',
+      module: 'my_rag_project',
+      columns: [
+        _i2.ColumnDefinition(
+          name: 'id',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'nextval(\'mock_country_data_id_seq\'::regclass)',
+        ),
+        _i2.ColumnDefinition(
+          name: 'countryName',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'isoCode',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'isEuMember',
+          columnType: _i2.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _i2.ColumnDefinition(
+          name: 'isNatoMember',
+          columnType: _i2.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _i2.IndexDefinition(
+          indexName: 'mock_country_data_pkey',
+          tableSpace: null,
+          elements: [
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'id',
+            )
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: true,
+        )
+      ],
+      managed: true,
+    ),
+    _i2.TableDefinition(
       name: 'rag_document',
       dartName: 'RAGDocument',
       schema: 'public',
@@ -615,14 +673,17 @@ class Protocol extends _i1.SerializationManagerServer {
     if (t == _i10.ListPanelTableDescription) {
       return _i10.ListPanelTableDescription.fromJson(data) as T;
     }
-    if (t == _i11.RAGDocument) {
-      return _i11.RAGDocument.fromJson(data) as T;
+    if (t == _i11.MockCountryData) {
+      return _i11.MockCountryData.fromJson(data) as T;
     }
-    if (t == _i12.RAGDocumentType) {
-      return _i12.RAGDocumentType.fromJson(data) as T;
+    if (t == _i12.RAGDocument) {
+      return _i12.RAGDocument.fromJson(data) as T;
     }
-    if (t == _i13.TestModel) {
-      return _i13.TestModel.fromJson(data) as T;
+    if (t == _i13.RAGDocumentType) {
+      return _i13.RAGDocumentType.fromJson(data) as T;
+    }
+    if (t == _i14.TestModel) {
+      return _i14.TestModel.fromJson(data) as T;
     }
     if (t == _i1.getType<_i4.Greeting?>()) {
       return (data != null ? _i4.Greeting.fromJson(data) : null) as T;
@@ -650,14 +711,17 @@ class Protocol extends _i1.SerializationManagerServer {
           ? _i10.ListPanelTableDescription.fromJson(data)
           : null) as T;
     }
-    if (t == _i1.getType<_i11.RAGDocument?>()) {
-      return (data != null ? _i11.RAGDocument.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i11.MockCountryData?>()) {
+      return (data != null ? _i11.MockCountryData.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i12.RAGDocumentType?>()) {
-      return (data != null ? _i12.RAGDocumentType.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i12.RAGDocument?>()) {
+      return (data != null ? _i12.RAGDocument.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i13.TestModel?>()) {
-      return (data != null ? _i13.TestModel.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i13.RAGDocumentType?>()) {
+      return (data != null ? _i13.RAGDocumentType.fromJson(data) : null) as T;
+    }
+    if (t == _i1.getType<_i14.TestModel?>()) {
+      return (data != null ? _i14.TestModel.fromJson(data) : null) as T;
     }
     try {
       return _i3.Protocol().deserialize<T>(data, t);
@@ -693,13 +757,16 @@ class Protocol extends _i1.SerializationManagerServer {
     if (data is _i10.ListPanelTableDescription) {
       return 'ListPanelTableDescription';
     }
-    if (data is _i11.RAGDocument) {
+    if (data is _i11.MockCountryData) {
+      return 'MockCountryData';
+    }
+    if (data is _i12.RAGDocument) {
       return 'RAGDocument';
     }
-    if (data is _i12.RAGDocumentType) {
+    if (data is _i13.RAGDocumentType) {
       return 'RAGDocumentType';
     }
-    if (data is _i13.TestModel) {
+    if (data is _i14.TestModel) {
       return 'TestModel';
     }
     className = _i2.Protocol().getClassNameForObject(data);
@@ -740,14 +807,17 @@ class Protocol extends _i1.SerializationManagerServer {
     if (dataClassName == 'ListPanelTableDescription') {
       return deserialize<_i10.ListPanelTableDescription>(data['data']);
     }
+    if (dataClassName == 'MockCountryData') {
+      return deserialize<_i11.MockCountryData>(data['data']);
+    }
     if (dataClassName == 'RAGDocument') {
-      return deserialize<_i11.RAGDocument>(data['data']);
+      return deserialize<_i12.RAGDocument>(data['data']);
     }
     if (dataClassName == 'RAGDocumentType') {
-      return deserialize<_i12.RAGDocumentType>(data['data']);
+      return deserialize<_i13.RAGDocumentType>(data['data']);
     }
     if (dataClassName == 'TestModel') {
-      return deserialize<_i13.TestModel>(data['data']);
+      return deserialize<_i14.TestModel>(data['data']);
     }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
@@ -785,10 +855,12 @@ class Protocol extends _i1.SerializationManagerServer {
         return _i9.ListPanelSupplierData.t;
       case _i10.ListPanelTableDescription:
         return _i10.ListPanelTableDescription.t;
-      case _i11.RAGDocument:
-        return _i11.RAGDocument.t;
-      case _i13.TestModel:
-        return _i13.TestModel.t;
+      case _i11.MockCountryData:
+        return _i11.MockCountryData.t;
+      case _i12.RAGDocument:
+        return _i12.RAGDocument.t;
+      case _i14.TestModel:
+        return _i14.TestModel.t;
     }
     return null;
   }

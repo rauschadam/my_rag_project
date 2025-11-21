@@ -1,0 +1,7 @@
+class: MockCountryData
+table: mock_country_data
+fields:
+  countryName: String
+  isoCode: String # pl. HU, DE
+  isEuMember: bool
+  isNatoMember: bool

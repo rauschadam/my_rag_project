@@ -67,6 +67,43 @@ class SchemaImporter {
     }
     session.log('Mock Supplier Data imported: ${mockRows.length} rows');
 
+    final oldCountries = await MockCountryData.db
+        .find(session, where: (_) => Constant.bool(true));
+    for (var c in oldCountries) await MockCountryData.db.deleteRow(session, c);
+
+    final countryRows = [
+      MockCountryData(
+          countryName: 'Magyarország',
+          isoCode: 'HU',
+          isEuMember: true,
+          isNatoMember: true),
+      MockCountryData(
+          countryName: 'Németország',
+          isoCode: 'DE',
+          isEuMember: true,
+          isNatoMember: true),
+      MockCountryData(
+          countryName: 'Szerbia',
+          isoCode: 'RS',
+          isEuMember: false,
+          isNatoMember: false),
+      MockCountryData(
+          countryName: 'Ausztria',
+          isoCode: 'AT',
+          isEuMember: true,
+          isNatoMember: false),
+      MockCountryData(
+          countryName: 'Egyesült Államok',
+          isoCode: 'US',
+          isEuMember: false,
+          isNatoMember: true),
+    ];
+
+    for (var row in countryRows) {
+      await MockCountryData.db.insertRow(session, row);
+    }
+    session.log('Mock Country Data imported: ${countryRows.length} rows');
+
     // --- 1. IMPORT LIST PANELS (Tables) ---
     // Example data from spec: DistributionId 15 and 125
     final panels = [

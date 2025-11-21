@@ -17,10 +17,11 @@ import 'model/chat_session.dart' as _i5;
 import 'model/list_panel_column_description.dart' as _i6;
 import 'model/list_panel_supplier_data.dart' as _i7;
 import 'model/list_panel_table_description.dart' as _i8;
-import 'model/rag_document.dart' as _i9;
-import 'model/rag_document_type.dart' as _i10;
-import 'model/test_model.dart' as _i11;
-import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i12;
+import 'model/mock_country_data.dart' as _i9;
+import 'model/rag_document.dart' as _i10;
+import 'model/rag_document_type.dart' as _i11;
+import 'model/test_model.dart' as _i12;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i13;
 export 'greeting.dart';
 export 'model/chat_message.dart';
 export 'model/chat_message_type.dart';
@@ -28,6 +29,7 @@ export 'model/chat_session.dart';
 export 'model/list_panel_column_description.dart';
 export 'model/list_panel_supplier_data.dart';
 export 'model/list_panel_table_description.dart';
+export 'model/mock_country_data.dart';
 export 'model/rag_document.dart';
 export 'model/rag_document_type.dart';
 export 'model/test_model.dart';
@@ -67,14 +69,17 @@ class Protocol extends _i1.SerializationManager {
     if (t == _i8.ListPanelTableDescription) {
       return _i8.ListPanelTableDescription.fromJson(data) as T;
     }
-    if (t == _i9.RAGDocument) {
-      return _i9.RAGDocument.fromJson(data) as T;
+    if (t == _i9.MockCountryData) {
+      return _i9.MockCountryData.fromJson(data) as T;
     }
-    if (t == _i10.RAGDocumentType) {
-      return _i10.RAGDocumentType.fromJson(data) as T;
+    if (t == _i10.RAGDocument) {
+      return _i10.RAGDocument.fromJson(data) as T;
     }
-    if (t == _i11.TestModel) {
-      return _i11.TestModel.fromJson(data) as T;
+    if (t == _i11.RAGDocumentType) {
+      return _i11.RAGDocumentType.fromJson(data) as T;
+    }
+    if (t == _i12.TestModel) {
+      return _i12.TestModel.fromJson(data) as T;
     }
     if (t == _i1.getType<_i2.Greeting?>()) {
       return (data != null ? _i2.Greeting.fromJson(data) : null) as T;
@@ -102,17 +107,20 @@ class Protocol extends _i1.SerializationManager {
           ? _i8.ListPanelTableDescription.fromJson(data)
           : null) as T;
     }
-    if (t == _i1.getType<_i9.RAGDocument?>()) {
-      return (data != null ? _i9.RAGDocument.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i9.MockCountryData?>()) {
+      return (data != null ? _i9.MockCountryData.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i10.RAGDocumentType?>()) {
-      return (data != null ? _i10.RAGDocumentType.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i10.RAGDocument?>()) {
+      return (data != null ? _i10.RAGDocument.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i11.TestModel?>()) {
-      return (data != null ? _i11.TestModel.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i11.RAGDocumentType?>()) {
+      return (data != null ? _i11.RAGDocumentType.fromJson(data) : null) as T;
+    }
+    if (t == _i1.getType<_i12.TestModel?>()) {
+      return (data != null ? _i12.TestModel.fromJson(data) : null) as T;
     }
     try {
-      return _i12.Protocol().deserialize<T>(data, t);
+      return _i13.Protocol().deserialize<T>(data, t);
     } on _i1.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
@@ -142,16 +150,19 @@ class Protocol extends _i1.SerializationManager {
     if (data is _i8.ListPanelTableDescription) {
       return 'ListPanelTableDescription';
     }
-    if (data is _i9.RAGDocument) {
+    if (data is _i9.MockCountryData) {
+      return 'MockCountryData';
+    }
+    if (data is _i10.RAGDocument) {
       return 'RAGDocument';
     }
-    if (data is _i10.RAGDocumentType) {
+    if (data is _i11.RAGDocumentType) {
       return 'RAGDocumentType';
     }
-    if (data is _i11.TestModel) {
+    if (data is _i12.TestModel) {
       return 'TestModel';
     }
-    className = _i12.Protocol().getClassNameForObject(data);
+    className = _i13.Protocol().getClassNameForObject(data);
     if (className != null) {
       return 'serverpod_auth.$className';
     }
@@ -185,18 +196,21 @@ class Protocol extends _i1.SerializationManager {
     if (dataClassName == 'ListPanelTableDescription') {
       return deserialize<_i8.ListPanelTableDescription>(data['data']);
     }
+    if (dataClassName == 'MockCountryData') {
+      return deserialize<_i9.MockCountryData>(data['data']);
+    }
     if (dataClassName == 'RAGDocument') {
-      return deserialize<_i9.RAGDocument>(data['data']);
+      return deserialize<_i10.RAGDocument>(data['data']);
     }
     if (dataClassName == 'RAGDocumentType') {
-      return deserialize<_i10.RAGDocumentType>(data['data']);
+      return deserialize<_i11.RAGDocumentType>(data['data']);
     }
     if (dataClassName == 'TestModel') {
-      return deserialize<_i11.TestModel>(data['data']);
+      return deserialize<_i12.TestModel>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth.')) {
       data['className'] = dataClassName.substring(15);
-      return _i12.Protocol().deserializeByClassName(data);
+      return _i13.Protocol().deserializeByClassName(data);
     }
     return super.deserializeByClassName(data);
   }
