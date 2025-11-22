@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -24,19 +26,22 @@ class _ChatPageState extends State<ChatPage> {
   /// Controller for scrolling the chat view
   final ScrollController _scrollController = ScrollController();
 
-  /// Decides between Document and ListPanel search logic
+  /// Decides between Document and ListPanel (SQL) search logic
   SearchMode _searchMode = SearchMode.sql;
 
-  /// Works with the users speech message
+  /// Handles the speech-to-text functionality
   final SpeechToText _speechToText = SpeechToText();
 
-  /// Decides if it should listen to the users speech
+  /// Indicates if the microphone permission is granted and speech is enabled
   bool _speechEnabled = false;
 
-  /// The words created from the users speech
+  /// The words recognized from the user's speech
   String _wordsSpoken = "";
 
+  /// Loading state for server requests
   bool _isLoading = false;
+
+  /// Current RAG session ID
   int? _currentSessionId;
 
   @override
@@ -47,37 +52,36 @@ class _ChatPageState extends State<ChatPage> {
     _initSpeech();
   }
 
-  /// Initialize the speech to text, if the permission is granted
+  /// Initialize the speech-to-text service
   void _initSpeech() async {
     try {
       _speechEnabled = await _speechToText.initialize(
-        onError: (e) => debugPrint("Inicializálási hiba: $e"),
+        onError: (e) => debugPrint("Initialization error: $e"),
       );
-    }
-    // On error we set the permission to denied
-    catch (e) {
+    } catch (e) {
+      // On error, assume permission is denied or feature unavailable
       _speechEnabled = false;
     }
-    // Updates the UI
+    // Update the UI
     if (mounted) setState(() {});
   }
 
-  /// Starts listening to the users speech
+  /// Starts listening to the user's speech
   void _startListening() async {
-    // 1. Check if we have permission to use the mic
+    // 1. Check if we have permission to use the mic or if service is available
     if (!_speechEnabled || !_speechToText.isAvailable) {
       try {
         _speechEnabled = await _speechToText.initialize(
-          onError: (error) => debugPrint('Mikrofon hiba: $error'),
-          onStatus: (status) => debugPrint('Mikrofon státusz: $status'),
+          onError: (error) => debugPrint('Microphone error: $error'),
+          onStatus: (status) => debugPrint('Microphone status: $status'),
         );
         if (mounted) setState(() {});
       } catch (e) {
-        debugPrint("Inicializálási hiba: $e");
+        debugPrint("Initialization error: $e");
       }
     }
 
-    // 2. If we still dont have permission then, we tell the user to give permission in the phones settings
+    // 2. If permission is still missing, notify the user via SnackBar (in Hungarian)
     if (!_speechEnabled) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -91,11 +95,11 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
-    // 3. If we have permission, then we listen on the mic
+    // 3. If we have permission, start listening
     await _speechToText.listen(
       onResult: _onSpeechResult,
       pauseFor: const Duration(seconds: 3),
-      localeId: "hu_HU",
+      localeId: "hu_HU", // Hungarian locale for speech recognition
     );
   }
 
@@ -105,16 +109,61 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {});
   }
 
+  /// Callback when speech is recognized
   void _onSpeechResult(SpeechRecognitionResult result) {
-    // Updates the UI
     setState(() {
       _wordsSpoken = result.recognizedWords;
-      // Put the words spoken into the input field
+      // Populate the input field with spoken words
       _inputTextController.text = _wordsSpoken;
-      // Put the cursor at the end of the words inputted
+      // Move cursor to the end of the text
       _inputTextController.selection = TextSelection.fromPosition(
           TextPosition(offset: _inputTextController.text.length));
     });
+  }
+
+  /// Processes the server response (Plain Text or JSON format)
+  /// Future goal: Implement On-Device AI processing here.
+  Future<String> _processServerResponse(String rawResponse) async {
+    // 1. Check if the response uses the specific JSON protocol
+    if (rawResponse.startsWith("DATA_JSON:")) {
+      try {
+        // 2. Decode JSON
+        final jsonString = rawResponse.substring("DATA_JSON:".length);
+        final jsonData = jsonDecode(jsonString);
+
+        if (jsonData['status'] == 'success') {
+          final data = jsonData['data'] as List;
+          final contextText = jsonData['query_context'] ?? "Eredmények:";
+
+          // --- Call the On-Device AI (Simulation) ---
+          // Currently using a "Dummy Formatter" for demonstration purposes:
+
+          StringBuffer sb = StringBuffer();
+          // User-facing output in Hungarian
+          sb.writeln("🤖 **On-Device feldolgozás:**\n");
+          sb.writeln("$contextText\n");
+
+          for (var item in data) {
+            sb.writeln("---");
+            // Print all fields nicely
+            (item as Map).forEach((key, value) {
+              sb.writeln("- **$key**: $value");
+            });
+          }
+          sb.writeln(
+              "---\n*(Ezt a szöveget már a telefonod generálta a JSON-ből!)*");
+
+          return sb.toString();
+        } else {
+          return "⚠️ Hiba a szerver oldalon: ${jsonData['message']}";
+        }
+      } catch (e) {
+        return "❌ Hiba a JSON feldolgozása közben: $e\n\nNyers adat:\n$rawResponse";
+      }
+    }
+
+    // 3. If not JSON, return as plain text
+    return rawResponse;
   }
 
   /// Request a new session ID from the server
@@ -124,9 +173,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _currentSessionId = session.id;
       });
-    }
-    // error..
-    catch (e) {
+    } catch (e) {
       debugPrint("Error starting session: $e");
     }
   }
@@ -151,27 +198,37 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
 
     try {
-      final bool useDatabase = _searchMode == SearchMode.sql;
-      // Call the RAG endpoint on the server (returns a Stream)
-      final stream = client.rag.ask(_currentSessionId!, text, useDatabase);
+      // Determine search mode logic (Database/SQL vs Documents)
+      bool searchDataBase = _searchMode == SearchMode.sql;
 
-      // Process the stream chunks as they arrive
+      // Receive stream from server
+      final stream = client.rag.ask(_currentSessionId!, text, searchDataBase);
+
+      // Collect the full response chunks into a buffer
+      StringBuffer fullResponseBuffer = StringBuffer();
+
       await for (final chunk in stream) {
-        setState(() {
-          final lastMsg = _messages.last;
-          // Append the new chunk to the last message (the AI's message)
-          _messages.last = ChatMessageDisplay(
-            text: lastMsg.text + chunk,
-            isUser: false,
-          );
-        });
-        // Scroll to bottom on every new chunk to follow the text generation
-        _scrollToBottom();
+        fullResponseBuffer.write(chunk);
       }
+
+      final rawResponse = fullResponseBuffer.toString();
+
+      // PROCESSING (JSON -> Readable text)
+      final formattedResponse = await _processServerResponse(rawResponse);
+
+      // Update UI with the formatted response
+      setState(() {
+        _messages.last = ChatMessageDisplay(
+          text: formattedResponse,
+          isUser: false,
+        );
+      });
+
+      _scrollToBottom();
     } catch (e) {
       setState(() {
-        _messages.last =
-            ChatMessageDisplay(text: "Error: $e", isUser: false, isError: true);
+        _messages.last = ChatMessageDisplay(
+            text: "Hiba történt: $e", isUser: false, isError: true);
       });
     } finally {
       setState(() {
@@ -199,7 +256,7 @@ class _ChatPageState extends State<ChatPage> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
 
-            // Kiírjuk, épp melyik módban vagyunk
+            // Display current active mode in Hungarian
             Text(
               _searchMode == SearchMode.sql
                   ? 'Mód: Adatbázis (SQL)'
@@ -217,7 +274,7 @@ class _ChatPageState extends State<ChatPage> {
             tooltip: "Adatok importálása (Egyszeri)",
             onPressed: () async {
               try {
-                // Ez hívja meg a szerveren a SchemaImporter-t
+                // Triggers SchemaImporter on the server
                 await client.rag.triggerSchemaImport();
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -225,7 +282,7 @@ class _ChatPageState extends State<ChatPage> {
                       content: Text('Sikeres importálás! Mehet a kérdés.')),
                 );
               } catch (e) {
-                debugPrint("Import hiba: $e");
+                debugPrint("Import error: $e");
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Hiba: $e')),
@@ -269,8 +326,7 @@ class _ChatPageState extends State<ChatPage> {
                     constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.8),
 
-                    // HERE IS THE MAGIC: Using MarkdownBody instead of Text!
-                    // This renders bold text, code blocks, lists, etc.
+                    // Using MarkdownBody to render bold text, code blocks, lists, etc.
                     child: MarkdownBody(
                       data: msg.text,
                       selectable: true, // Text is selectable
@@ -318,7 +374,7 @@ class _ChatPageState extends State<ChatPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // User input field
+                  // User input field row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -331,7 +387,7 @@ class _ChatPageState extends State<ChatPage> {
                     ],
                   ),
 
-                  // Bottom Row
+                  // Bottom Row (Controls)
                   Padding(
                     padding:
                         const EdgeInsets.only(top: 8.0, left: 4.0, right: 4.0),
@@ -339,7 +395,7 @@ class _ChatPageState extends State<ChatPage> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         _buildModeButton(),
-                        // Mic button
+                        // Mic button with glow effect
                         GestureDetector(
                           onLongPress: _startListening,
                           onLongPressUp: _stopListening,

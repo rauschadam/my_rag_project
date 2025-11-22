@@ -61,9 +61,8 @@ class RagEndpoint extends Endpoint {
 
     // 4. Handle Logic based on mode
     if (searchListPanels) {
-      // --- MODE A: SECURE ERP DATA QUERY (REAL RAG) ---
+      // --- MODE A: SECURE DATA QUERY (ON-DEVICE AI PREPARATION) ---
 
-      // Step A: Router & Planner (AI)
       // We search for relevant metadata (descriptions of tables), not the data itself.
       final panels = await findRelevantListPanels(session, question);
 
@@ -71,9 +70,9 @@ class RagEndpoint extends Endpoint {
       // In a real app, you would map 'distributionId' to actual SQL table names here.
       // For this demo, we map ID 125 to 'mock_supplier_data'.
       String panelDesc = panels.map((p) {
-        String tableName = (p.distributionId == 125)
-            ? 'list_panel_suplier_data'
-            : 'unknown_table';
+        String tableName = 'unknown_table';
+        if (p.distributionId == 125) tableName = 'list_panel_suplier_data';
+        if (p.distributionId == 15) tableName = 'mock_country_data';
         return "ID: ${p.distributionId}, SQL Tábla: $tableName, Név: ${p.nameHun}\n   Leírás: ${p.descriptionHun}";
       }).join("\n\n");
 
@@ -127,7 +126,7 @@ Kimeneti formátum (Csak a nyers JSON):
       session.log("AI Query Plan: $queryPlanJson");
 
       // Step B: Generic Execution (Local Dart Code)
-      String finalResponse = "";
+      String responseData = "";
 
       try {
         final cleanJson = queryPlanJson
@@ -139,74 +138,54 @@ Kimeneti formátum (Csak a nyers JSON):
         // Execute the dynamic query locally
         final results = await _executeDynamicQuery(session, plan);
 
-        // Step C: Synthesis (Offline Formatting)
-        // We format the data locally into a Markdown string.
-        // This ensures the actual rows (vendor names, money) are NEVER sent to the AI API.
+        // The raw results are returned to the client in JSON format.
+        // We use a prefix ("DATA_JSON:") so the client knows this is data, not text.
 
         if (results.isEmpty) {
-          finalResponse =
-              "Nem találtam adatot a megadott feltételekkel az adatbázisban.";
+          // If there is no data we return the error in JSON
+          responseData = jsonEncode({
+            "status": "empty",
+            "message": "Nem találtam adatot a feltételekkel."
+          });
         } else {
-          finalResponse =
-              "**Lekérdezés eredménye (${results.length} találat):**\n\n";
-
-          // Generic formatter: iterates over all columns in the result
-          for (var row in results) {
-            finalResponse += "- ";
-            var infoParts = <String>[];
-
-            // Try to find a "main" column for the title (heuristic)
-            String? title;
-            if (row.containsKey('vendor_name')) {
-              title = row['vendor_name'];
-            } else if (row.containsKey('name')) {
-              title = row['name'];
-            }
-
-            if (title != null) {
-              finalResponse += "**$title** ";
-            }
-
-            // Add other details
-            row.forEach((key, value) {
-              if (key != 'id' && key != 'vendor_name' && key != 'name') {
-                // Format dates nicely if needed
-                String valStr = value.toString();
-                if (value is DateTime) valStr = valStr.substring(0, 10);
-                infoParts.add("_$key: ${valStr}_");
-              }
+          // Convert dates to strings, befor jsonEncode
+          final jsonReadyResults = results.map((row) {
+            return row.map((key, value) {
+              if (value is DateTime)
+                return MapEntry(key, value.toIso8601String());
+              return MapEntry(key, value);
             });
-
-            if (infoParts.isNotEmpty) {
-              finalResponse += "(${infoParts.join(', ')})";
-            }
-            finalResponse += "\n";
-          }
-
-          finalResponse +=
-              "\n*(Az adatokat biztonságosan, offline generáltam)*";
+          }).toList();
+          // Return the successful JSON
+          responseData = jsonEncode({
+            "status": "success",
+            "query_context":
+                "A felhasználó kérdésére ($question) ezeket az adatokat találtam:",
+            "data": jsonReadyResults
+          });
         }
       } catch (e) {
-        session.log("Query execution error: $e", level: LogLevel.error);
-        finalResponse =
-            "Hiba történt a lekérdezés feldolgozása közben. (Részletek a szerver logban)";
+        session.log("Query Error: $e", level: LogLevel.error);
+        responseData = jsonEncode({
+          "status": "error",
+          "message": "Hiba történt a szerver oldali lekérdezésben."
+        });
       }
 
-      // Stream the local response back to the client
-      yield finalResponse;
+      // Return with special prefix
+      // This will tell the client to start the On-Device AI.
+      yield "DATA_JSON:$responseData";
 
-      // Save the model response to history
+      // Log the raw Json (The local AI will generate the answer from this)
       await ChatMessage.db.insertRow(
         session,
         ChatMessage(
           chatSessionId: chatSessionId,
-          message: finalResponse,
+          message: "DATA_JSON:$responseData", // Save raw json to history
           type: ChatMessageType.model,
           createdAt: DateTime.now(),
         ),
       );
-
-      // Return immediately to avoid calling the general AI logic below
       return;
     } else {
       // --- MODE B: CONTENT RAG (Documentation Search) ---
