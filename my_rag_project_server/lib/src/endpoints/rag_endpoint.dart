@@ -102,17 +102,26 @@ A 'mock_country_data' (Országok - Panel 15):
 FELADAT: 
 Döntsd el, melyik tábla releváns a kérdéshez (Szállítók VAGY Országok).
 Elemzed a kérdést és készíts egy SQL-szerű lekérdezési tervet JSON formátumban.
+
+A "tableName" -be kerül a tábla neve, ahonnan lekérdezést hajtjuk végre
+A "displayFields" tömbben sorold fel a szükséges mezőket. Minden elemnél add meg:
+ - "column": az SQL mező neve
+ - "label": a mező magyar neve (a séma alapján)
 A "filters" tömbben sorold fel a feltételeket.
 Az operátor lehet: "=", "!=", ">", "<", "ILIKE" (szöveges keresésnél).
+
 
 Szabályok:
 1. **Dátumok:** Ha a kérdés időtartamra vonatkozik (pl. "elmúlt 6 hónap"), számold ki a pontos kezdő dátumot a Mai dátumhoz ($currentDate) képest! Használd a ">=" operátort a 'lastActivity' mezőn.
 2. **Rendezés:** Ha a kérdés "legnagyobb", "legkisebb" vagy sorrendet kér, használd az "orderBy" mezőt.
-3. **Összeg:** Az 'amount' mező szöveges (pl. "1500 EUR"), de próbálj rá szűrni, ha konkrét összeg szerepel.
 
 Kimeneti formátum (Csak a nyers JSON):
 {
   "tableName": "list_panel_suplier_data", // VAGY "mock_country_data"
+  "displayFields": [
+     {"column": "vendorName", "label": "Szállító"},
+     {"column": "amount", "label": "Összeg"}
+  ], // Csak a lényeges mezőket (column) add vissza a hozzá tartozó magyar megnevezéssel
   "filters": [
     {"column": "countryCode", "operator": "=", "value": "CZ"},
     {"column": "vendorName", "operator": "ILIKE", "value": "%Szolgáltatás%"}
@@ -141,6 +150,18 @@ Kimeneti formátum (Csak a nyers JSON):
         // The raw results are returned to the client in JSON format.
         // We use a prefix ("DATA_JSON:") so the client knows this is data, not text.
 
+        // Dynamic mapping of display names
+        final List<dynamic> displayFields = plan['displayFields'] ?? [];
+        final Map<String, String> aiLabelMap = {};
+
+        for (var field in displayFields) {
+          if (field is Map &&
+              field['column'] != null &&
+              field['label'] != null) {
+            aiLabelMap[field['column']] = field['label'];
+          }
+        }
+
         if (results.isEmpty) {
           // If there is no data we return the error in JSON
           responseData = jsonEncode({
@@ -151,9 +172,14 @@ Kimeneti formátum (Csak a nyers JSON):
           // Convert dates to strings, befor jsonEncode
           final jsonReadyResults = results.map((row) {
             return row.map((key, value) {
-              if (value is DateTime)
-                return MapEntry(key, value.toIso8601String());
-              return MapEntry(key, value);
+              // Dátum formázás
+              var finalValue = value;
+              if (value is DateTime) {
+                finalValue = value.toIso8601String().substring(0, 10);
+              }
+
+              final translatedKey = aiLabelMap[key] ?? key;
+              return MapEntry(translatedKey, finalValue);
             });
           }).toList();
           // Return the successful JSON
@@ -229,12 +255,28 @@ Kimeneti formátum (Csak a nyers JSON):
       Session session, Map<String, dynamic> plan) async {
     // --- 1. Setup query data ---
     final tableName = plan['tableName'];
+    final displayFields = plan['displayFields'] as List?;
     final filters = plan['filters'] as List? ?? [];
     final orderBy = plan['orderBy'] as Map<String, dynamic>?;
     final limit = plan['limit'] ?? 10;
 
     // --- SELECT ---
-    String query = "SELECT * FROM \"$tableName\" WHERE 1=1";
+    String selectClause = "*";
+
+    if (displayFields != null && displayFields.isNotEmpty) {
+      List<String> cols = [];
+      for (var f in displayFields) {
+        if (f is Map && f['column'] != null) {
+          String col = f['column'];
+          if (RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(col)) {
+            cols.add("\"$col\"");
+          }
+        }
+      }
+      if (cols.isNotEmpty) selectClause = cols.join(", ");
+    }
+
+    String query = "SELECT $selectClause FROM \"$tableName\" WHERE 1=1";
 
     for (int i = 0; i < filters.length; i++) {
       final f = filters[i];

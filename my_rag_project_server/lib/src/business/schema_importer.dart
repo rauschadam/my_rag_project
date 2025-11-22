@@ -69,7 +69,9 @@ class SchemaImporter {
 
     final oldCountries = await MockCountryData.db
         .find(session, where: (_) => Constant.bool(true));
-    for (var c in oldCountries) await MockCountryData.db.deleteRow(session, c);
+    for (var c in oldCountries) {
+      await MockCountryData.db.deleteRow(session, c);
+    }
 
     final countryRows = [
       MockCountryData(
