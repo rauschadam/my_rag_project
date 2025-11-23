@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:my_rag_project_server/src/business/ollama_client.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:my_rag_project_server/src/business/schema_importer.dart';
 import 'package:my_rag_project_server/src/business/search.dart';
@@ -134,9 +135,6 @@ Kimeneti formátum (Csak a nyers JSON):
       final queryPlanJson = await genAi.generateSimpleAnswer(queryPlanPrompt);
       session.log("AI Query Plan: $queryPlanJson");
 
-      // Step B: Generic Execution (Local Dart Code)
-      String responseData = "";
-
       try {
         final cleanJson = queryPlanJson
             .replaceAll('```json', '')
@@ -144,13 +142,31 @@ Kimeneti formátum (Csak a nyers JSON):
             .trim();
         final plan = jsonDecode(cleanJson);
 
-        // Execute the dynamic query locally
+        // 1. Execute the database query
         final results = await _executeDynamicQuery(session, plan);
+
+        // Error: The results is empty
+        if (results.isEmpty) {
+          String noDataResponse =
+              "Sajnos nem találtam adatot a megadott feltételekkel az adatbázisban.";
+          yield noDataResponse;
+
+          await ChatMessage.db.insertRow(
+            session,
+            ChatMessage(
+              chatSessionId: chatSessionId,
+              message: noDataResponse,
+              type: ChatMessageType.model,
+              createdAt: DateTime.now(),
+            ),
+          );
+          return;
+        }
 
         // The raw results are returned to the client in JSON format.
         // We use a prefix ("DATA_JSON:") so the client knows this is data, not text.
 
-        // Dynamic mapping of display names
+        // 2. map of display names based on the AI
         final List<dynamic> displayFields = plan['displayFields'] ?? [];
         final Map<String, String> aiLabelMap = {};
 
@@ -162,57 +178,56 @@ Kimeneti formátum (Csak a nyers JSON):
           }
         }
 
-        if (results.isEmpty) {
-          // If there is no data we return the error in JSON
-          responseData = jsonEncode({
-            "status": "empty",
-            "message": "Nem találtam adatot a feltételekkel."
-          });
-        } else {
-          // Convert dates to strings, befor jsonEncode
-          final jsonReadyResults = results.map((row) {
-            return row.map((key, value) {
-              // Dátum formázás
-              var finalValue = value;
-              if (value is DateTime) {
-                finalValue = value.toIso8601String().substring(0, 10);
-              }
+        StringBuffer rawContextBuffer = StringBuffer();
+        for (var row in results) {
+          rawContextBuffer.writeln("--- Adatsor ---");
+          row.forEach((key, value) {
+            // Format date
+            var valStr = value.toString();
+            if (value is DateTime) valStr = valStr.substring(0, 10);
 
-              final translatedKey = aiLabelMap[key] ?? key;
-              return MapEntry(translatedKey, finalValue);
-            });
-          }).toList();
-          // Return the successful JSON
-          responseData = jsonEncode({
-            "status": "success",
-            "query_context":
-                "A felhasználó kérdésére ($question) ezeket az adatokat találtam:",
-            "data": jsonReadyResults
+            // Use Hungarian label if available
+            var label = aiLabelMap[key] ?? key;
+
+            rawContextBuffer.writeln("$label: $valStr");
           });
         }
+
+        // 3. Call Ollama (Server-Side)
+        final aiResponse = await OllamaClient.generateRefinedResponse(
+            session, rawContextBuffer.toString(), question);
+
+        // 4. Return the AI response text to Client
+        yield aiResponse;
+
+        // 5. Log to history
+        await ChatMessage.db.insertRow(
+          session,
+          ChatMessage(
+            chatSessionId: chatSessionId,
+            message: aiResponse,
+            type: ChatMessageType.model,
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        return;
       } catch (e) {
-        session.log("Query Error: $e", level: LogLevel.error);
-        responseData = jsonEncode({
-          "status": "error",
-          "message": "Hiba történt a szerver oldali lekérdezésben."
-        });
+        session.log("Query/AI Error: $e", level: LogLevel.error);
+        String errorMessage = "Hiba történt a lekérdezés feldolgozása közben.";
+        yield errorMessage;
+
+        await ChatMessage.db.insertRow(
+          session,
+          ChatMessage(
+            chatSessionId: chatSessionId,
+            message: errorMessage,
+            type: ChatMessageType.model,
+            createdAt: DateTime.now(),
+          ),
+        );
+        return;
       }
-
-      // Return with special prefix
-      // This will tell the client to start the On-Device AI.
-      yield "DATA_JSON:$responseData";
-
-      // Log the raw Json (The local AI will generate the answer from this)
-      await ChatMessage.db.insertRow(
-        session,
-        ChatMessage(
-          chatSessionId: chatSessionId,
-          message: "DATA_JSON:$responseData", // Save raw json to history
-          type: ChatMessageType.model,
-          createdAt: DateTime.now(),
-        ),
-      );
-      return;
     } else {
       // --- MODE B: CONTENT RAG (Documentation Search) ---
       // This mode uses the Cloud AI to generate the answer based on documents.

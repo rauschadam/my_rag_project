@@ -39,6 +39,16 @@ services:
     environment:
       - REDIS_REPLICATION_MODE=master
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: my_rag_ollama
+    ports:
+      - "11434:11434"  # Ezen a porton éri el a Dart kód
+    volumes:
+      - ollama_data:/root/.ollama # Itt tárolja a letöltött modelleket
+    restart: always
+
 volumes:
   my_rag_project_data:
   my_rag_project_test_data:
+  ollama_data:
