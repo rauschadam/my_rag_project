@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:serverpod/serverpod.dart';
+import 'package:my_rag_project_server/src/config/prompts.dart';
 
 class OllamaClient {
   // Ha a 'dart run' a host gépen fut (fejlesztés), akkor localhost.
@@ -13,22 +14,8 @@ class OllamaClient {
       Session session, String rawDataContext, String userQuestion) async {
     try {
       // Instructions for the AI
-      final prompt = '''
-<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-Te egy segítőkész, udvarias és precíz magyar üzleti asszisztens vagy.
-A feladatod: Az alább megadott ADATBÁZIS EREDMÉNYEK alapján válaszolj a felhasználó kérdésére.
-Fogalmazz természetes, kerek mondatokban magyarul. A válaszod legyen lényegre törő.
-Ne használj technikai kifejezéseket (pl. "JSON", "array"), hanem úgy beszélj, mint egy elemző.
-Használj Markdown formázást (félkövér, felsorolás) az áttekinthetőségért.
-
-<|eot_id|><|start_header_id|>user<|end_header_id|>
-FELHASZNÁLÓ KÉRDÉSE: "$userQuestion"
-
-ADATBÁZIS EREDMÉNYEK (Ezek a tények, amiből dolgoznod kell):
-$rawDataContext
-
-<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-''';
+      // Instructions for the AI
+      final prompt = Prompts.getOllamaPrompt(userQuestion, rawDataContext);
 
       // Hívás az Ollama API-hoz
       final response = await http.post(

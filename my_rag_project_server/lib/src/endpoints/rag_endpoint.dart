@@ -7,6 +7,7 @@ import 'package:my_rag_project_server/src/business/schema_importer.dart';
 import 'package:my_rag_project_server/src/business/search.dart';
 import 'package:my_rag_project_server/src/generative_ai/generative_ai.dart';
 import 'package:my_rag_project_server/src/generated/protocol.dart';
+import 'package:my_rag_project_server/src/config/prompts.dart';
 
 class RagEndpoint extends Endpoint {
   /// Creates a new chat session in the database.
@@ -81,55 +82,8 @@ class RagEndpoint extends Endpoint {
       final currentDate = DateTime.now().toIso8601String().substring(0, 10);
 
       // HUNGARIAN PROMPT: Ask the AI to plan the SQL query in JSON format.
-      final queryPlanPrompt = '''
-A felhasználó kérdése: "$question"
-
-Elérhető táblák definíciója:
-$panelDesc
-
-A 'list_panel_suplier_data' (Szállítók) tábla fontosabb mezői (PONTOSAN ezeket használd):
-- vendorName (Szállító neve, szöveg)
-- countryCode (Országkód, pl. HU, CZ, DE, szöveg)
-- category (Kategória, pl. Szolgáltatás, Termék, szöveg)
-- amount (Összeg, szöveg)
-- lastActivity (Utolsó aktivitás dátuma, pl. "2025-10-01", Dátum típus)
-
-A 'mock_country_data' (Országok - Panel 15):
-   - countryName (Ország neve, pl. "Magyarország")
-   - isoCode (Kétbetűs kód, pl. HU)
-   - isEuMember (EU tag? true/false)
-   - isNatoMember (NATO tag? true/false)
-
-FELADAT: 
-Döntsd el, melyik tábla releváns a kérdéshez (Szállítók VAGY Országok).
-Elemzed a kérdést és készíts egy SQL-szerű lekérdezési tervet JSON formátumban.
-
-A "tableName" -be kerül a tábla neve, ahonnan lekérdezést hajtjuk végre
-A "displayFields" tömbben sorold fel a szükséges mezőket. Minden elemnél add meg:
- - "column": az SQL mező neve
- - "label": a mező magyar neve (a séma alapján)
-A "filters" tömbben sorold fel a feltételeket.
-Az operátor lehet: "=", "!=", ">", "<", "ILIKE" (szöveges keresésnél).
-
-
-Szabályok:
-1. **Dátumok:** Ha a kérdés időtartamra vonatkozik (pl. "elmúlt 6 hónap"), számold ki a pontos kezdő dátumot a Mai dátumhoz ($currentDate) képest! Használd a ">=" operátort a 'lastActivity' mezőn.
-2. **Rendezés:** Ha a kérdés "legnagyobb", "legkisebb" vagy sorrendet kér, használd az "orderBy" mezőt.
-
-Kimeneti formátum (Csak a nyers JSON):
-{
-  "tableName": "list_panel_suplier_data", // VAGY "mock_country_data"
-  "displayFields": [
-     {"column": "vendorName", "label": "Szállító"},
-     {"column": "amount", "label": "Összeg"}
-  ], // Csak a lényeges mezőket (column) add vissza a hozzá tartozó magyar megnevezéssel
-  "filters": [
-    {"column": "countryCode", "operator": "=", "value": "CZ"},
-    {"column": "vendorName", "operator": "ILIKE", "value": "%Szolgáltatás%"}
-  ],
-  "limit": 10
-}
-''';
+      // HUNGARIAN PROMPT: Ask the AI to plan the SQL query in JSON format.
+      final queryPlanPrompt = Prompts.getQueryPlanPrompt(question, panelDesc, currentDate);
 
       // Call Cloud AI to get the PLAN (No sensitive data sent here, only schema info)
       final queryPlanJson = await genAi.generateSimpleAnswer(queryPlanPrompt);
@@ -236,8 +190,7 @@ Kimeneti formátum (Csak a nyers JSON):
       List<RAGDocument> documents = await searchDocuments(session, question);
 
       // HUNGARIAN PROMPT: General assistant prompt
-      String systemPrompt =
-          'Te egy segítőkész AI asszisztens vagy. Válaszolj a kérdésre KIZÁRÓLAG a megadott dokumentumok alapján. Ha a válasz nincs benne a dokumentumokban, mondd azt: "A megadott kontextus alapján nem tudok válaszolni".';
+      String systemPrompt = Prompts.systemPromptDocuments;
 
       final answerStream = genAi.generateConversationalAnswer(
         question: question,

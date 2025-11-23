@@ -3,11 +3,10 @@ import 'dart:convert';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:my_rag_project_flutter/chat_message_display.dart';
+import 'package:my_rag_project_flutter/src/chat/chat_message_display.dart';
 import 'package:my_rag_project_flutter/main.dart';
-import 'package:my_rag_project_flutter/search_mode.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+import 'package:my_rag_project_flutter/src/chat/search_mode.dart';
+import 'package:my_rag_project_flutter/src/services/speech_manager.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -30,10 +29,7 @@ class _ChatPageState extends State<ChatPage> {
   SearchMode _searchMode = SearchMode.sql;
 
   /// Handles the speech-to-text functionality
-  final SpeechToText _speechToText = SpeechToText();
-
-  /// Indicates if the microphone permission is granted and speech is enabled
-  bool _speechEnabled = false;
+  final SpeechManager _speechManager = SpeechManager();
 
   /// The words recognized from the user's speech
   String _wordsSpoken = "";
@@ -54,35 +50,24 @@ class _ChatPageState extends State<ChatPage> {
 
   /// Initialize the speech-to-text service
   void _initSpeech() async {
-    try {
-      _speechEnabled = await _speechToText.initialize(
-        onError: (e) => debugPrint("Initialization error: $e"),
-      );
-    } catch (e) {
-      // On error, assume permission is denied or feature unavailable
-      _speechEnabled = false;
-    }
-    // Update the UI
+    await _speechManager.init(
+      onError: (errorMsg) => debugPrint("Initialization error: $errorMsg"),
+    );
     if (mounted) setState(() {});
   }
 
   /// Starts listening to the user's speech
   void _startListening() async {
     // 1. Check if we have permission to use the mic or if service is available
-    if (!_speechEnabled || !_speechToText.isAvailable) {
-      try {
-        _speechEnabled = await _speechToText.initialize(
+    if (!_speechManager.isEnabled) {
+       await _speechManager.init(
           onError: (error) => debugPrint('Microphone error: $error'),
-          onStatus: (status) => debugPrint('Microphone status: $status'),
-        );
-        if (mounted) setState(() {});
-      } catch (e) {
-        debugPrint("Initialization error: $e");
-      }
+       );
+       if (mounted) setState(() {});
     }
 
     // 2. If permission is still missing, notify the user via SnackBar (in Hungarian)
-    if (!_speechEnabled) {
+    if (!_speechManager.isEnabled) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -96,29 +81,28 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     // 3. If we have permission, start listening
-    await _speechToText.listen(
-      onResult: _onSpeechResult,
-      pauseFor: const Duration(seconds: 3),
-      localeId: "hu_HU", // Hungarian locale for speech recognition
+    await _speechManager.startListening(
+      onResult: (text) {
+        setState(() {
+          _wordsSpoken = text;
+          _inputTextController.text = _wordsSpoken;
+          _inputTextController.selection = TextSelection.fromPosition(
+              TextPosition(offset: _inputTextController.text.length));
+        });
+      },
+      onListeningStateChanged: () {
+        if (mounted) setState(() {});
+      },
     );
   }
 
   /// Manually stop listening
   void _stopListening() async {
-    await _speechToText.stop();
-    setState(() {});
-  }
-
-  /// Callback when speech is recognized
-  void _onSpeechResult(SpeechRecognitionResult result) {
-    setState(() {
-      _wordsSpoken = result.recognizedWords;
-      // Populate the input field with spoken words
-      _inputTextController.text = _wordsSpoken;
-      // Move cursor to the end of the text
-      _inputTextController.selection = TextSelection.fromPosition(
-          TextPosition(offset: _inputTextController.text.length));
-    });
+    await _speechManager.stopListening(
+      onListeningStateChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   /// Processes the server response (Plain Text or JSON format)
@@ -399,9 +383,9 @@ class _ChatPageState extends State<ChatPage> {
                         GestureDetector(
                           onLongPress: _startListening,
                           onLongPressUp: _stopListening,
-                          child: _speechToText.isListening
+                          child: _speechManager.isListening
                               ? AvatarGlow(
-                                  animate: _speechToText.isListening,
+                                  animate: _speechManager.isListening,
                                   glowColor: Colors.blue,
                                   repeat: true,
                                   duration: const Duration(milliseconds: 1500),
@@ -431,7 +415,7 @@ class _ChatPageState extends State<ChatPage> {
       onSubmitted: (_) => _sendMessage(),
       decoration: InputDecoration(
         hintText:
-            _speechToText.isListening ? 'Hallgatom...' : 'Írj üzenetet...',
+            _speechManager.isListening ? 'Hallgatom...' : 'Írj üzenetet...',
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 14,
@@ -450,12 +434,12 @@ class _ChatPageState extends State<ChatPage> {
       shape: const CircleBorder(side: BorderSide.none),
       elevation: 0,
       backgroundColor:
-          _speechToText.isListening ? Colors.blue : Colors.grey.shade200,
+          _speechManager.isListening ? Colors.blue : Colors.grey.shade200,
       foregroundColor:
-          _speechToText.isListening ? Colors.white : Colors.black87,
-      onPressed: _speechToText.isListening ? _stopListening : _startListening,
+          _speechManager.isListening ? Colors.white : Colors.black87,
+      onPressed: _speechManager.isListening ? _stopListening : _startListening,
       child: Icon(
-        _speechToText.isListening ? Icons.mic_off : Icons.mic,
+        _speechManager.isListening ? Icons.mic_off : Icons.mic,
         size: 20,
       ),
     );
