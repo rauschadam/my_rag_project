@@ -236,7 +236,7 @@ class _ChatPageState extends State<ChatPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'SWS AI Chat',
+              'Eurostone AI Chat',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
 

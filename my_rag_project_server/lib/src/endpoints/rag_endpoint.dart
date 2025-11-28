@@ -82,7 +82,6 @@ class RagEndpoint extends Endpoint {
       final currentDate = DateTime.now().toIso8601String().substring(0, 10);
 
       // HUNGARIAN PROMPT: Ask the AI to plan the SQL query in JSON format.
-      // HUNGARIAN PROMPT: Ask the AI to plan the SQL query in JSON format.
       final queryPlanPrompt = Prompts.getQueryPlanPrompt(question, panelDesc, currentDate);
 
       // Call Cloud AI to get the PLAN (No sensitive data sent here, only schema info)
