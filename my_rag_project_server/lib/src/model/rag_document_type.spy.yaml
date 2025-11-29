@@ -1,5 +1,0 @@
-enum: RAGDocumentType
-values:
-  - documentation
-  - discussion
-  - issue

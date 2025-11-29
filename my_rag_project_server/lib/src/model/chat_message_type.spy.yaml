@@ -1,5 +1,0 @@
-enum: ChatMessageType
-values:
-  - user
-  - model
-  - system

@@ -1,0 +1,6 @@
+@my_rag_project_server_csharp_HostAddress = http://localhost:5119
+
+GET {{my_rag_project_server_csharp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

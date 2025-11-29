@@ -1,0 +1,180 @@
+€uroStone 
+Welcome to Europe! - Isten hozta Európában!
+EuroStone AI Chat leírás
+
+Tartalom
+1	Bevezetés	2
+2	Backend	3
+2.1	Offline AI – Ollama	3
+2.2	Vektorok	3
+3	RAG Endpoint működés	4
+3.1	Adatmodell (osztályok / DB táblák)	4
+3.1.1	ChatSession	4
+3.1.2	ChatMessage	4
+3.1.3	ListPanelDescription	4
+3.2	API végpontok	5
+3.2.1	Felhasználó bejelentkezés – POST (/api/chat/login)	5
+3.2.2	Felhasználó regisztálás – POST (/api/chat/registration)	5
+3.2.3	Beszélgetés indítása - POST (/api/chat/session)	5
+3.2.4	Korábbi beszélgetések listázása – GET (/api/chat/sessions)	5
+3.2.5	Üzenet küldés / kérdezés – POST (/api/chat/message)	5
+3.2.6	Csevegés törlése – POST (/api/chat/deleteSession)	5
+3.3	Kérdés feldolgozása → SQL lekérdezés	6
+3.3.1	Jogosultság ellenőrzése	6
+3.3.2	Releváns táblák keresése (Vector search)	6
+3.3.3	SQL terv generálása	6
+3.3.4	Dinamikus SQL Végrehajtás	6
+3.3.5	Válasz generálása	6
+3.3.6	Mentés	6
+4	Tervezett munkamenet	7
+4.1	ListaPanel leírások vektorizálása	7
+4.2	User kérdése	7
+4.3	Prompt alkotás	7
+4.4	Gemini API (vagy Ollama a szerveren)	7
+4.5	SQL Query	7
+4.6	Ollama – Válaszalkotás	7
+5	ListaPanel / végpontok	9
+5.1	ListaPanel leírások visszaadása	9
+5.2	Lekérdezés küldés	9
+5.3	Vektorok tárolása	9
+ 
+1	Bevezetés
+Ez a dokumentáció csak kezdetleges. Célja az ötletelés, a projekt pontos működésének, felépítésének megszületése. A dokumentum még nem tér ki az AI betanítására, a hangalapú azonosítás vagy a csak hangalapú kommunikációra az AI-al. Az eddigi terv alapján az AI, még csak felsorolás típusú választ tud adni.  Pl.: „Kik a legnagyobb cseh partnereink?” 
+2	Backend
+2.1	Offline AI – Ollama
+Kell egy Szerverre letöltött LLM, ami képes az sql lekérdezésből visszakapott JSON-ből egy értelmes, a user kérdésére releváns és lényegre törő választ alkotni.
+Amivel én játszottam az az Ollama, teljesen ingyenes, nem nagy gépigényű (laptopon is kb 3 másodperc mire megalkotja a választ)
+2.2	Vektorok
+A vektorok összehasonlítása, tárolása sok féle képen történhet. Leírom a legvalószínűbbet (feltételezve, hogy az adatbázis magától nem képes vektor indexek összehasonlítására, kiszámítására, valamint, hogy az adatbázisban tároljuk majd a vektorokat).
+1.	Szerver elindul / elindítjuk a folyamatot manuálisan (pl.: appból / időközönként)
+2.	A listapanel leírások lekérdezése az adatbázisból
+3.	Megnézzük, hogy a leírások egyeznek-e a már szerverre lementett leírásokkal.
+a.	Ha egyezik, kihagyjuk, nem foglalkozunk vele. (már jól vektorizálva vannak, nincs vele teendőnk)
+b.	Ha nem egyezik vagy új a leírás, akkor újravektorizáljuk (embedding model segítségével), frissítjük az adatbázisban a vektort
+4.	Szerveren lementjük az új / módosított leírásokat és a hozzájuk tartozó vektorokat
+5.	User kérdez, a kérdést vektorizáljuk
+6.	Összehasonlítjuk a kérdés vektort, a leírás vektorokkal
+7.	Sorba rendezzük a legrelevánsabb vektorokat (leírásokat)
+8.	Visszaadjuk a legjobb 3 találatot (leírást)
+
+Fontos figyelembe venni, hogy 1000+ tábla esetén sokáig tart a vektorok összehasonlítása, kifogyhat a memóriából. Ilyenkor érdemesebb olyan adatbázisba menteni a vektorokat, amik képesek vektor műveletekre.
+ 
+3	RAG Endpoint működés
+
+Ez a dokumentum a RAG (Retrieval-Augmented Generation) rendszer adatbázis lekérdezési (Schema Search) funkciójának specifikációját tartalmazza. A cél, hogy a felhasználók természetes nyelven kérdezhessenek le adatokat az SQL adatbázisból.
+3.1	Adatmodell (osztályok / DB táblák)
+3.1.1	ChatSession
+•	Id: Egyedi azonosító
+•	UserId: A felhasználó azonosítója 
+•	Title: A beszélgetés címe (Az első kérdésből generálható)
+•	UpdatedAt: A létrehozás / utolsó módosítás dátuma
+•	State: Csevegés státusza (pl.: törölt)
+3.1.2	ChatMessage
+•	Id: Egyedi azonosító
+•	ChatSessionId: Beszélgetés azonosítója
+•	Type: Üzenet típusa (User / AI küldte)
+•	Message: Üzenet szövege
+•	CreatedAt: Létrehozás dátuma
+3.1.3	ListPanelDescription
+•	Id: Egyedi azonosító
+•	ListPanelName: ListaPanel neve
+•	Description: ListaPanel leírása
+•	Embedding: A leírás vektorizált alakja
+ 
+3.2	API végpontok
+3.2.1	Felhasználó bejelentkezés – POST (/api/chat/login)
+•	Input: azonosítás (email + jelszó)
+•	Output: AuthToken
+3.2.2	Felhasználó regisztálás – POST (/api/chat/registration)
+Biztonság: Nem szeretnénk, ha bárki regisztrálni tudna.
+•	Input: azonosítás (email + jelszo + jogok?)
+•	Output: AuthToken
+3.2.3	Beszélgetés indítása - POST (/api/chat/session)
+Létrehoz egy új sessiont a bejelentkezett felhasználónak
+•	Input: AuthToken
+•	Output: ChatSession objektum
+3.2.4	Korábbi beszélgetések listázása – GET (/api/chat/sessions)
+Lekéri a bejelentkezett felhasználó korábbi beszélgetéseit.
+•	Input: AuthToken
+•	Logic: SELECT * FROM ChatSession WHERE UserId = @CurrentUserId ORDER BY CreatedAt DESC
+3.2.5	Üzenet küldés / kérdezés – POST (/api/chat/message)
+Feldolgozza az üzenetet, majd adatbázis lekérdezést hoz létre.
+•	Input: 
+o	ChatSessionId: Melyik beszélgetésben vagyunk
+o	Question: A felhasználó kérdése
+3.2.6	Csevegés törlése – POST (/api/chat/deleteSession)
+A felhasználó választhatja, hogy törli az adott csevegést. (Ez lehet végleges, vagy csak státusz váltás is)
+•	Input: ChatSessionId
+ 
+3.3	Kérdés feldolgozása → SQL lekérdezés
+3.3.1	Jogosultság ellenőrzése
+Ellenőrizni kell, hogy létezik-e a ChatSessionId és hogy a jelenlegi UserId-hoz tartozik-e.
+3.3.2	Releváns táblák keresése (Vector search)
+•	Kérdés vektorizálása (Question embedding)
+•	Keresés a ListPanelDescription táblában (Cosine distance alapján)
+•	Visszaadja a TOP 3 találatot (legrelevánsabb ListaPaneleket)
+3.3.3	SQL terv generálása
+•	Prompt összeállítása
+o	Felhasználó kérdése
+o	Megtalált táblák leírása
+o	Aktuális dátum (Hogy tudjon dátum-ra is szűrni)
+•	LLM hívás (PL.: Gemini Fast)
+•	Elvárt Output (JSON)
+o	tableName: Melyik táblából kérdezzen
+o	filters: Szűrési feltételek lista
+o	displayFields: Mely oszlopokat jelenítse meg
+o	orderBy: Rendezés
+o	limit: Max találatok száma
+3.3.4	Dinamikus SQL Végrehajtás
+A JSON alapján Query összeállítása, majd a lekérdezés futtatása
+3.3.5	Válasz generálása
+A szerveren futó local LLM (Ollama) megfogalmazza a választ a kérdés, és a query eredményei alapján.
+3.3.6	Mentés
+A felhasználó kérdését és az AI válaszát elmentjük a ChatMessage táblába. 
+4	Tervezett munkamenet
+4.1	ListaPanel leírások vektorizálása
+1.	ListaPanel leírások lekérése (API)
+2.	Vektorizálás (embedding, a Gemini embedding modellel)
+3.	Vektorok eltárolása a szerveren.
+4.2	User kérdése
+4.3	Prompt alkotás
+1.	Chat előzmények
+2.	User kérdése
+3.	Releváns ListaPanel-ek megkeresése a vektorizált ListaPanel leírások alapján (tábla, mezők, mezőnevek magyarul), majd átadása
+4.	Aktuális dátum
+5.	A feladat részletes leírása (JSON alkotás sql queryhez)
+4.4	Gemini API (vagy Ollama a szerveren)
+1.	Feldolgozza a promptot
+2.	Visszaad egy RAW JSON-t
+4.5	SQL Query
+1.	A JSON-t feldolgozzuk
+•	Melyik tábla? FROM
+•	Melyik mezők? SELECT
+•	Mezőnevek? ALIAS
+•	WHERE
+•	GROUP BY
+•	Sorrend, rendezés. ORDER BY
+•	LIMIT
+2.	A query futtatása (Api)
+4.6	Ollama – Válaszalkotás
+1.	Prompt készítése
+1.	Feladat leírása (Lényegretörő válasz)
+2.	User kérdése
+3.	A queryből visszaadott JSON átadása
+2.	Válasz kiíratása a képernyőre
+ 
+ 
+5	ListaPanel / végpontok
+5.1	ListaPanel leírások visszaadása
+Egy végpont, ami lekéri az összes listapanel leírást. Ez maga is lehet egy listapanel.
+5.2	Lekérdezés küldés
+Személyre szabható listapanel, aminek a megfelelő mezőkben elküldött adatok segítségével csináljuk a lekérdezést. 
+Például külön meglehet adni, hogy melyik számú Listapanelből kérdezünk le, és hogy mi van a:
+•	SELECT
+•	WHERE
+•	ORDER BY
+•	LIMIT
+•	stb…
+részekben.
+5.3	Vektorok tárolása
+Amennyiben az adatbázisban szeretnénk tárolni a vektorokat azoknak kell egy végpont, hogy feltudjuk tölteni vagy frissíteni őket.
