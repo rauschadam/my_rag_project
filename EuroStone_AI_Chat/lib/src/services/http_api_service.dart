@@ -21,26 +21,43 @@ class HttpApiService {
     }
   }
 
-  Future<String> ask({
+  Stream<Map<String, dynamic>> ask({
     required int chatSessionId,
     required String question,
     required bool searchListPanels,
-  }) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/Rag/ask'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'chatSessionId': chatSessionId,
-        'question': question,
-        'searchListPanels': searchListPanels,
-      }),
-    );
+  }) async* {
+    final request = http.Request('POST', Uri.parse('$_baseUrl/Rag/ask'));
+    request.headers['Content-Type'] = 'application/json';
+    request.body = jsonEncode({
+      'chatSessionId': chatSessionId,
+      'question': question,
+      'searchListPanels': searchListPanels,
+    });
 
-    if (response.statusCode == 200) {
-      return response
-          .body; // The API returns plain text (or JSON string) directly
-    } else {
-      throw Exception('Failed to get answer: ${response.statusCode}');
+    final client = http.Client();
+    try {
+      final response = await client.send(request);
+
+      if (response.statusCode == 200) {
+        final stream = response.stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter());
+
+        await for (final line in stream) {
+          if (line.trim().isNotEmpty) {
+            try {
+              final data = jsonDecode(line);
+              yield data;
+            } catch (e) {
+              print("Error decoding JSON line: $e");
+            }
+          }
+        }
+      } else {
+        throw Exception('Failed to get answer: ${response.statusCode}');
+      }
+    } finally {
+      client.close();
     }
   }
 

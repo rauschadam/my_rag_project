@@ -52,156 +52,185 @@ namespace EuroStone_AI_Chat_Server.Controllers
             public bool SearchListPanels { get; set; } // Keressünk-e az adatbázisban (Schema RAG)?
         }
 
-        // Kérdés megválaszolása.
+        // Kérdés megválaszolása STREAMING módban.
         // POST: /rag/ask
+        // Nem adunk vissza ActionResult-ot, hanem közvetlenül írunk a Response stream-re.
         [HttpPost("ask")]
-        public async Task<ActionResult<string>> Ask([FromBody] AskRequest request)
+        public async Task Ask([FromBody] AskRequest request)
         {
-            // 1. Munkamenet ellenőrzése
-            var chatSession = await _context.ChatSessions.FindAsync(request.ChatSessionId);
-            if (chatSession == null)
+            // Beállítjuk a válasz típusát NDJSON-re (Newline Delimited JSON) vagy sima text-re, amit streamelünk.
+            Response.ContentType = "application/x-ndjson";
+            
+            // Segédfüggvény a stream íráshoz
+            async Task SendStatus(string status)
             {
-                return NotFound($"Chat session not found (ID: {request.ChatSessionId})");
+                var json = JsonSerializer.Serialize(new { type = "status", content = status });
+                await Response.WriteAsync(json + "\n");
+                await Response.Body.FlushAsync();
             }
 
-            // 2. Előzmények betöltése (jelenleg nincs használva a promptban, de később hasznos lehet)
-            // var history = await _context.ChatMessages
-            //     .Where(m => m.ChatSessionId == request.ChatSessionId)
-            //     .OrderBy(m => m.CreatedAt)
-            //     .ToListAsync();
-
-            // 3. Felhasználói kérdés mentése az adatbázisba
-            var userMsg = new ChatMessage
+            async Task SendResult(string result)
             {
-                ChatSessionId = request.ChatSessionId,
-                Message = request.Question,
-                Type = ChatMessageType.User,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.ChatMessages.Add(userMsg);
-            await _context.SaveChangesAsync();
+                var json = JsonSerializer.Serialize(new { type = "result", content = result });
+                await Response.WriteAsync(json + "\n");
+                await Response.Body.FlushAsync();
+            }
 
-            if (request.SearchListPanels)
+            async Task SendError(string error)
             {
-                // --- Schema Search Mode (Adatbázis alapú keresés) ---
+                var json = JsonSerializer.Serialize(new { type = "error", content = error });
+                await Response.WriteAsync(json + "\n");
+                await Response.Body.FlushAsync();
+            }
 
-                // Lekérjük az elérhető táblák leírását (egyszerűsítés: mindet lekérjük)
-                var panels = await _context.ListPanelTableDescriptions.ToListAsync();
-                
-                // Összeállítjuk a táblák leírását a prompt számára
-                var panelDescBuilder = new StringBuilder();
-                foreach (var p in panels)
+            try 
+            {
+                // 1. Munkamenet ellenőrzése
+                await SendStatus("Munkamenet ellenőrzése...");
+                var chatSession = await _context.ChatSessions.FindAsync(request.ChatSessionId);
+                if (chatSession == null)
                 {
-                    string tableName = "unknown_table";
-                    // Itt rendeljük hozzá a fizikai táblaneveket a DistributionId alapján
-                    if (p.DistributionId == 125) tableName = "list_panel_suplier_data";
-                    if (p.DistributionId == 15) tableName = "mock_country_data";
-                    panelDescBuilder.AppendLine($"ID: {p.DistributionId}, SQL Tábla: {tableName}, Név: {p.NameHun}\n   Leírás: {p.DescriptionHun}");
-                    panelDescBuilder.AppendLine();
+                    await SendError($"Chat session not found (ID: {request.ChatSessionId})");
+                    return;
                 }
 
-                var currentDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
-                // Létrehozzuk a promptot, ami arra kéri az AI-t, hogy készítsen egy lekérdezési tervet (JSON).
-                var prompt = Prompts.GetQueryPlanPrompt(request.Question, panelDescBuilder.ToString(), currentDate);
-
-                // AI hívása a terv elkészítéséhez
-                var planJsonRaw = await _ollamaService.GeneratePlanAsync(prompt);
-                
-                // JSON tisztítása (néha az AI extra szöveget is fűz hozzá)
-                var cleanJson = planJsonRaw;
-                var firstBrace = cleanJson.IndexOf('{');
-                var lastBrace = cleanJson.LastIndexOf('}');
-                
-                if (firstBrace >= 0 && lastBrace > firstBrace)
+                // 3. Felhasználói kérdés mentése az adatbázisba
+                var userMsg = new ChatMessage
                 {
-                    cleanJson = cleanJson.Substring(firstBrace, lastBrace - firstBrace + 1);
-                }
-                else 
-                {
-                     // Figyelmeztetés, ha nem találtunk JSON objektumot
-                     Console.WriteLine($"Warning: No JSON object found in AI response: {planJsonRaw}");
-                }
-                
-                Console.WriteLine($"DEBUG: Clean JSON: {cleanJson}");
+                    ChatSessionId = request.ChatSessionId,
+                    Message = request.Question,
+                    Type = ChatMessageType.User,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.ChatMessages.Add(userMsg);
+                await _context.SaveChangesAsync();
 
-                try 
+                if (request.SearchListPanels)
                 {
-                    // JSON parse-olása
-                    var plan = JsonNode.Parse(cleanJson, null, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip });
-                    if (plan == null) throw new Exception("Failed to parse JSON plan");
+                    // --- Schema Search Mode (Adatbázis alapú keresés) ---
 
-                    // Kezeljük azt az esetet, ha az AI tömböt ad vissza objektum helyett
-                    if (plan is JsonArray jsonArray && jsonArray.Count > 0)
+                    await SendStatus("Adatbázis séma betöltése...");
+                    // Lekérjük az elérhető táblák leírását (egyszerűsítés: mindet lekérjük)
+                    var panels = await _context.ListPanelTableDescriptions.ToListAsync();
+                    
+                    // Összeállítjuk a táblák leírását a prompt számára
+                    var panelDescBuilder = new StringBuilder();
+                    foreach (var p in panels)
                     {
-                        plan = jsonArray[0];
+                        string tableName = "unknown_table";
+                        // Itt rendeljük hozzá a fizikai táblaneveket a DistributionId alapján
+                        if (p.DistributionId == 125) tableName = "list_panel_suplier_data";
+                        if (p.DistributionId == 15) tableName = "mock_country_data";
+                        panelDescBuilder.AppendLine($"ID: {p.DistributionId}, SQL Tábla: {tableName}, Név: {p.NameHun}\n   Leírás: {p.DescriptionHun}");
+                        panelDescBuilder.AppendLine();
                     }
 
-                    if (plan is not JsonObject)
+                    var currentDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+                    // Létrehozzuk a promptot, ami arra kéri az AI-t, hogy készítsen egy lekérdezési tervet (JSON).
+                    var prompt = Prompts.GetQueryPlanPrompt(request.Question, panelDescBuilder.ToString(), currentDate);
+
+                    await SendStatus("Lekérdezési terv készítése (AI)...");
+                    // AI hívása a terv elkészítéséhez
+                    var planJsonRaw = await _ollamaService.GeneratePlanAsync(prompt);
+                    
+                    // JSON tisztítása (néha az AI extra szöveget is fűz hozzá)
+                    var cleanJson = planJsonRaw;
+                    var firstBrace = cleanJson.IndexOf('{');
+                    var lastBrace = cleanJson.LastIndexOf('}');
+                    
+                    if (firstBrace >= 0 && lastBrace > firstBrace)
                     {
-                        throw new Exception($"JSON is not an object. Type: {plan.GetType().Name}");
+                        cleanJson = cleanJson.Substring(firstBrace, lastBrace - firstBrace + 1);
                     }
+                    
+                    // Console.WriteLine($"DEBUG: Clean JSON: {cleanJson}");
 
-                    // Dinamikus SQL lekérdezés végrehajtása a terv alapján
-                    var results = await ExecuteDynamicQueryAsync(plan);
-
-                    if (results.Count == 0)
+                    try 
                     {
-                        var noDataMsg = "Sajnos nem találtam adatot a megadott feltételekkel az adatbázisban.";
-                        await SaveModelMessage(request.ChatSessionId, noDataMsg);
-                        return Ok(noDataMsg);
-                    }
+                        // JSON parse-olása
+                        var plan = JsonNode.Parse(cleanJson, null, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip });
+                        if (plan == null) throw new Exception("Failed to parse JSON plan");
 
-                    // Eredmények formázása szöveges formátumba az AI számára
-                    var displayFields = plan["displayFields"]?.AsArray();
-                    var aiLabelMap = new Dictionary<string, string>();
-                    if (displayFields != null)
-                    {
-                        foreach (var field in displayFields)
+                        // Kezeljük azt az esetet, ha az AI tömböt ad vissza objektum helyett
+                        if (plan is JsonArray jsonArray && jsonArray.Count > 0)
                         {
-                            if (field == null) continue;
-                            var col = field["column"]?.ToString();
-                            var label = field["label"]?.ToString();
-                            if (col != null && label != null) aiLabelMap[col] = label;
+                            plan = jsonArray[0];
                         }
-                    }
 
-                    var rawContextBuffer = new StringBuilder();
-                    foreach (var row in results)
-                    {
-                        rawContextBuffer.AppendLine("--- Adatsor ---");
-                        var rowDict = (IDictionary<string, object>)row;
-                        foreach (var kvp in rowDict)
+                        if (plan is not JsonObject)
                         {
-                            var valStr = kvp.Value?.ToString() ?? "";
-                            if (kvp.Value is DateTime dt) valStr = dt.ToString("yyyy-MM-dd");
-                            
-                            // Használjuk a címkéket, ha vannak, különben az oszlopnevet
-                            var label = aiLabelMap.ContainsKey(kvp.Key) ? aiLabelMap[kvp.Key] : kvp.Key;
-                            rawContextBuffer.AppendLine($"{label}: {valStr}");
+                            throw new Exception($"JSON is not an object. Type: {plan.GetType().Name}");
                         }
+
+                        await SendStatus("SQL lekérdezés futtatása...");
+                        // Dinamikus SQL lekérdezés végrehajtása a terv alapján
+                        var results = await ExecuteDynamicQueryAsync(plan);
+
+                        if (results.Count == 0)
+                        {
+                            var noDataMsg = "Sajnos nem találtam adatot a megadott feltételekkel az adatbázisban.";
+                            await SaveModelMessage(request.ChatSessionId, noDataMsg);
+                            await SendResult(noDataMsg);
+                            return;
+                        }
+
+                        // Eredmények formázása szöveges formátumba az AI számára
+                        var displayFields = plan["displayFields"]?.AsArray();
+                        var aiLabelMap = new Dictionary<string, string>();
+                        if (displayFields != null)
+                        {
+                            foreach (var field in displayFields)
+                            {
+                                if (field == null) continue;
+                                var col = field["column"]?.ToString();
+                                var label = field["label"]?.ToString();
+                                if (col != null && label != null) aiLabelMap[col] = label;
+                            }
+                        }
+
+                        var rawContextBuffer = new StringBuilder();
+                        foreach (var row in results)
+                        {
+                            rawContextBuffer.AppendLine("--- Adatsor ---");
+                            var rowDict = (IDictionary<string, object>)row;
+                            foreach (var kvp in rowDict)
+                            {
+                                var valStr = kvp.Value?.ToString() ?? "";
+                                if (kvp.Value is DateTime dt) valStr = dt.ToString("yyyy-MM-dd");
+                                
+                                // Használjuk a címkéket, ha vannak, különben az oszlopnevet
+                                var label = aiLabelMap.ContainsKey(kvp.Key) ? aiLabelMap[kvp.Key] : kvp.Key;
+                                rawContextBuffer.AppendLine($"{label}: {valStr}");
+                            }
+                        }
+
+                        await SendStatus("Válasz megfogalmazása (AI)...");
+                        // Végső válasz generálása az AI-val az adatok alapján
+                        var finalResponse = await _ollamaService.GenerateResponseAsync("", Prompts.GetOllamaPrompt(request.Question, rawContextBuffer.ToString()));
+
+                        await SaveModelMessage(request.ChatSessionId, finalResponse);
+                        await SendResult(finalResponse);
                     }
-
-                    // Végső válasz generálása az AI-val az adatok alapján
-                    var finalResponse = await _ollamaService.GenerateResponseAsync("", Prompts.GetOllamaPrompt(request.Question, rawContextBuffer.ToString()));
-
-                    await SaveModelMessage(request.ChatSessionId, finalResponse);
-                    return Ok(finalResponse);
-
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error: {ex}");
+                        var errorMsg = "Hiba történt a lekérdezés feldolgozása közben.";
+                        await SaveModelMessage(request.ChatSessionId, errorMsg);
+                        await SendError(errorMsg);
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine($"Error: {ex}");
-                    var errorMsg = "Hiba történt a lekérdezés feldolgozása közben.";
-                    await SaveModelMessage(request.ChatSessionId, errorMsg);
-                    return Ok(errorMsg);
+                    // Dokumentum alapú keresés (még nincs implementálva)
+                    var msg = "A dokumentum alapú keresés jelenleg nem elérhető.";
+                    await SaveModelMessage(request.ChatSessionId, msg);
+                    await SendResult(msg);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                // Dokumentum alapú keresés (még nincs implementálva)
-                var msg = "A dokumentum alapú keresés jelenleg nem elérhető.";
-                await SaveModelMessage(request.ChatSessionId, msg);
-                return Ok(msg);
+                 Console.WriteLine($"Critical Error: {ex}");
+                 await SendError("Kritikus szerver hiba történt.");
             }
         }
 

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EuroStone_AI_Chat_Server")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+51af678e52862e355e72b935eef39f5b13f87a35")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7d6ad80ea3aa9acbfd9d71f69f78b76a116e64f7")]
 [assembly: System.Reflection.AssemblyProductAttribute("EuroStone_AI_Chat_Server")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EuroStone_AI_Chat_Server")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -109,51 +107,6 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  /// Processes the server response (Plain Text or JSON format)
-  /// Future goal: Implement On-Device AI processing here.
-  Future<String> _processServerResponse(String rawResponse) async {
-    // 1. Check if the response uses the specific JSON protocol
-    if (rawResponse.startsWith("DATA_JSON:")) {
-      try {
-        // 2. Decode JSON
-        final jsonString = rawResponse.substring("DATA_JSON:".length);
-        final jsonData = jsonDecode(jsonString);
-
-        if (jsonData['status'] == 'success') {
-          final data = jsonData['data'] as List;
-          final contextText = jsonData['query_context'] ?? "Eredmények:";
-
-          // --- Call the On-Device AI (Simulation) ---
-          // Currently using a "Dummy Formatter" for demonstration purposes:
-
-          StringBuffer sb = StringBuffer();
-          // User-facing output in Hungarian
-          sb.writeln("🤖 **On-Device feldolgozás:**\n");
-          sb.writeln("$contextText\n");
-
-          for (var item in data) {
-            sb.writeln("---");
-            // Print all fields nicely
-            (item as Map).forEach((key, value) {
-              sb.writeln("- **$key**: $value");
-            });
-          }
-          sb.writeln(
-              "---\n*(Ezt a szöveget már a telefonod generálta a JSON-ből!)*");
-
-          return sb.toString();
-        } else {
-          return "⚠️ Hiba a szerver oldalon: ${jsonData['message']}";
-        }
-      } catch (e) {
-        return "❌ Hiba a JSON feldolgozása közben: $e\n\nNyers adat:\n$rawResponse";
-      }
-    }
-
-    // 3. If not JSON, return as plain text
-    return rawResponse;
-  }
-
   /// Request a new session ID from the server
   Future<void> _startNewSession() async {
     try {
@@ -179,7 +132,7 @@ class _ChatPageState extends State<ChatPage> {
       _inputTextController.clear();
 
       // Add a placeholder message for the AI response
-      _messages.add(ChatMessageDisplay(text: "", isUser: false));
+      _messages.add(ChatMessageDisplay(text: "...", isUser: false));
     });
 
     // Scroll to the bottom to show the new message
@@ -189,25 +142,43 @@ class _ChatPageState extends State<ChatPage> {
       // Determine search mode logic (Database/SQL vs Documents)
       bool searchDataBase = _searchMode == SearchMode.sql;
 
-      // Receive response from server (REST API returns full text, not stream)
-      final rawResponse = await _apiService.ask(
+      // Subscribe to the stream
+      final stream = _apiService.ask(
         chatSessionId: _currentSessionId!,
         question: text,
         searchListPanels: searchDataBase,
       );
 
-      // PROCESSING (JSON -> Readable text)
-      final formattedResponse = await _processServerResponse(rawResponse);
+      await for (final data in stream) {
+        final type = data['type'];
+        final content = data['content'];
 
-      // Update UI with the formatted response
-      setState(() {
-        _messages.last = ChatMessageDisplay(
-          text: formattedResponse,
-          isUser: false,
-        );
-      });
+        if (type == 'status') {
+          setState(() {
+            _messages.last = ChatMessageDisplay(
+              text: "_${content}_",
+              isUser: false,
+            );
+          });
+        } else if (type == 'result') {
+          setState(() {
+            _messages.last = ChatMessageDisplay(
+              text: content,
+              isUser: false,
+            );
+          });
+        } else if (type == 'error') {
+          setState(() {
+            _messages.last = ChatMessageDisplay(
+              text: "⚠️ Hiba: $content",
+              isUser: false,
+              isError: true,
+            );
+          });
+        }
 
-      _scrollToBottom();
+        _scrollToBottom();
+      }
     } catch (e) {
       setState(() {
         _messages.last = ChatMessageDisplay(
