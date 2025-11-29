@@ -1,7 +1,9 @@
 namespace EuroStone_AI_Chat_Server.Config
 {
+    // Ez az osztály tartalmazza az AI-nak küldött utasításokat (prompteokat).
     public static class Prompts
     {
+        // Ez a prompt kéri meg az AI-t, hogy készítsen egy lekérdezési tervet (JSON formátumban) a felhasználó kérdése alapján.
         public static string GetQueryPlanPrompt(string question, string panelDesc, string currentDate)
         {
             return $@"
@@ -27,7 +29,7 @@ Kimeneti formátum (Csak a nyers JSON):
   ""tableName"": ""list_panel_suplier_data"", // VAGY ""mock_country_data""
   ""displayFields"": [
      {{""column"": ""vendorName"", ""label"": ""Szállító""}},
-     {{""column"": ""amount"", ""label"": ""Összeg""}}
+     {{""column"": ""amount"": ""Összeg""}}
   ], // Csak a lényeges mezőket (column) add vissza a hozzá tartozó magyar megnevezéssel
   ""filters"": [
     {{""column"": ""countryCode"", ""operator"": ""="", ""value"": ""CZ""}}
@@ -38,6 +40,7 @@ Kimeneti formátum (Csak a nyers JSON):
         }
         
 
+        // Ez a prompt kéri meg az AI-t, hogy fogalmazza meg a végső választ a felhasználónak az adatbázisból kapott eredmények alapján.
         public static string GetOllamaPrompt(string userQuestion, string rawDataContext)
         {
             return $@"
